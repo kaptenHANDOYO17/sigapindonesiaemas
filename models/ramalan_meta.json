@@ -1,0 +1,52 @@
+{
+  "dilatih_pada": "2026-09-09T08:34:20.341201+00:00",
+  "perangkat": "CPU",
+  "sumber": "sintetis-gabungan",
+  "seed_latih": [
+    11,
+    22,
+    33,
+    44,
+    55,
+    66
+  ],
+  "seed_uji": [
+    99,
+    411,
+    522,
+    633
+  ],
+  "fitur": [
+    "permukaan_mm",
+    "tinggi_air_mm",
+    "rasio_endapan",
+    "rasio_debit",
+    "rasio_air",
+    "laju_naik",
+    "debit_lpm",
+    "ph_air",
+    "hujan_mm",
+    "hujan_3jam",
+    "permukaan_rerata_1jam",
+    "permukaan_simpangan_1jam",
+    "debit_rerata_1jam",
+    "selisih_air_debit",
+    "laju_dasar",
+    "lonjakan_dasar",
+    "jam_sin",
+    "jam_cos"
+  ],
+  "target": "permukaan_mm",
+  "idx_target": 0,
+  "langkah_input": 72,
+  "langkah_output": 48,
+  "menit_per_langkah": 15,
+  "jumlah_jendela_latih": 14591,
+  "metrik": {
+    "mae_mm": 53.72499465942383,
+    "rmse_mm": 142.5883026123047,
+    "mae_3jam_mm": 27.91109848022461,
+    "mae_jam12_mm": 65.1039047241211,
+    "mae_naif_mm": 75.08906555175781
+  }
+}

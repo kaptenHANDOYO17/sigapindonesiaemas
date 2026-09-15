@@ -1,0 +1,92 @@
+name: Pelatihan Ulang Bulanan
+
+# Setiap bulan, model dilatih ulang dengan data 30 hari terakhir, dan
+# ambang batas ditinjau berdasarkan verifikasi petugas di lapangan.
+# Hasilnya dibuka sebagai Pull Request supaya ada manusia yang memeriksa
+# sebelum model baru dipakai.
+
+on:
+  schedule:
+    - cron: "0 18 1 * *"      # tanggal 1 setiap bulan, 01:00 WIB
+  workflow_dispatch:
+    inputs:
+      hari:
+        description: "Rentang data (hari)"
+        default: "30"
+      lewati_ramalan:
+        description: "Lewati pelatihan LSTM (lebih cepat)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  latih-ulang:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Pasang dependensi
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Latih ulang
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:         ${{ secrets.SUPABASE_KEY }}
+          SALURAN_ID:           ${{ vars.SALURAN_ID }}
+          TINGGI_PASANG_MM:     ${{ vars.TINGGI_PASANG_MM }}
+          KEDALAMAN_SALURAN_MM: ${{ vars.KEDALAMAN_SALURAN_MM }}
+          LEBAR_SALURAN_MM:     ${{ vars.LEBAR_SALURAN_MM }}
+          PANJANG_SEGMEN_M:     ${{ vars.PANJANG_SEGMEN_M }}
+          DEBIT_RANCANGAN_LPM:  ${{ vars.DEBIT_RANCANGAN_LPM }}
+          TF_CPP_MIN_LOG_LEVEL: "2"
+        run: |
+          ARG="--hari ${{ inputs.hari || '30' }}"
+          if [ "${{ inputs.lewati_ramalan }}" = "true" ]; then ARG="$ARG --lewati-ramalan"; fi
+          python -m training.retrain $ARG
+
+      - name: Evaluasi arah kesalahan
+        continue-on-error: true
+        run: python -m training.evaluate || true
+
+      - name: Buka Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: model/bulanan
+          title: "Model hasil pelatihan ulang bulanan"
+          commit-message: "Latih ulang model dengan data 30 hari terakhir"
+          add-paths: |
+            models/*.joblib
+            models/*.keras
+            models/*.json
+            LAPORAN_LATIH_ULANG.md
+          body: |
+            Model dilatih ulang otomatis dengan data sensor 30 hari terakhir.
+
+            **Periksa dulu sebelum digabungkan:**
+
+            1. Buka `LAPORAN_LATIH_ULANG.md` di berkas yang berubah.
+            2. Perhatikan baris **Klasifikasi status** pada tabel hasil. Bila sumbernya
+               sudah `verifikasi`, berarti model kini belajar dari data lapangan, bukan
+               dari simulator. Itu titik balik yang penting.
+            3. Perhatikan bagian **Usulan penyesuaian ambang**. Bila ada usulan,
+               bahas dengan petugas BPBD sebelum mengubah GitHub Variables.
+            4. Perhatikan peringatan mengenai kelengkapan data. Bila lebih dari
+               separuh data hilang, sensor kemungkinan bermasalah dan model
+               hasil pelatihan ini **tidak layak dipakai**.
+            5. Jalankan `python -m training.evaluate` di komputer Anda dan
+               pastikan sistem masih cenderung berlebih waspada, bukan meremehkan.
+
+            Ambang batas **tidak** diubah otomatis oleh alur ini. Perubahan
+            ambang harus dilakukan manusia yang bertanggung jawab.

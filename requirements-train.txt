@@ -1,0 +1,22 @@
+# Untuk MELATIH model di laptop dengan GPU.
+#
+# Catatan GPU:
+#   Linux / WSL2 -> pip install "tensorflow[and-cuda]==2.17.1"
+#                   CUDA dan cuDNN ikut terpasang otomatis.
+#   Windows asli -> TensorFlow di atas 2.10 tidak mendukung GPU langsung.
+#                   Pakai WSL2. Baca docs/PANDUAN_GPU.md
+tensorflow==2.10.0
+
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.7.0  # >=1.7 diperlukan untuk class_weight pada HistGradientBoosting
+joblib==1.4.2
+matplotlib==3.9.2
+requests==2.32.3
+python-dotenv==1.0.1
+
+# Pengunduh dataset acuan
+kagglehub==0.3.4
+datasets==3.1.0
+huggingface_hub==0.26.2
+roboflow==1.1.48

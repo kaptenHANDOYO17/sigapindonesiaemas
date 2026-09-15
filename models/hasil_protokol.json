@@ -1,0 +1,92 @@
+{
+  "dijalankan": "2026-09-15T18:38:44.962179+00:00",
+  "pembagian": {
+    "latih": [
+      "S01",
+      "S02",
+      "S06",
+      "S07",
+      "S08",
+      "S09",
+      "S11",
+      "S12",
+      "S13",
+      "S14",
+      "S16",
+      "S17"
+    ],
+    "validasi": [
+      "S03",
+      "S10",
+      "S15"
+    ],
+    "uji": [
+      "S04",
+      "S05",
+      "S18"
+    ]
+  },
+  "proporsi_bahaya_per_saluran": {
+    "S01": 0.0866,
+    "S02": 0.1454,
+    "S03": 0.0826,
+    "S04": 0.0671,
+    "S05": 0.0,
+    "S06": 0.0,
+    "S07": 0.03,
+    "S08": 0.0872,
+    "S09": 0.0335,
+    "S10": 0.0274,
+    "S11": 0.0,
+    "S12": 0.0,
+    "S13": 0.0,
+    "S14": 0.1027,
+    "S15": 0.0,
+    "S16": 0.0324,
+    "S17": 0.0416,
+    "S18": 0.0
+  },
+  "pengaturan_model": {
+    "max_iter": 200,
+    "learning_rate": 0.1,
+    "max_depth": 4,
+    "l2_regularization": 1.0
+  },
+  "ambang": {
+    "bahaya": 0.2,
+    "kritis": 0.25
+  },
+  "hasil_uji": {
+    "aturan_saja": {
+      "tepat": 0.9078510802469136,
+      "bahaya_tertangkap": 0.907679033649698,
+      "jumlah_bahaya": 1159,
+      "alarm_palsu": 0.05159724551607111,
+      "kritis_terbaca_aman": 0.0,
+      "jumlah_kritis": 972,
+      "terlalu_waspada": 0.05434027777777778,
+      "kurang_waspada": 0.03780864197530864
+    },
+    "model_saja": {
+      "tepat": 0.9678433641975308,
+      "bahaya_tertangkap": 0.9516824849007766,
+      "jumlah_bahaya": 1159,
+      "alarm_palsu": 0.0015587695586117085,
+      "kritis_terbaca_aman": 0.0,
+      "jumlah_kritis": 972,
+      "terlalu_waspada": 0.013310185185185185,
+      "kurang_waspada": 0.01884645061728395
+    },
+    "gabungan": {
+      "tepat": 0.9229552469135802,
+      "bahaya_tertangkap": 0.9620362381363244,
+      "jumlah_bahaya": 1159,
+      "alarm_palsu": 0.05284031491091336,
+      "kritis_terbaca_aman": 0.0,
+      "jumlah_kritis": 972,
+      "terlalu_waspada": 0.06604938271604938,
+      "kurang_waspada": 0.01099537037037037
+    }
+  },
+  "catatan": "Pemilihan model dan penyetelan ambang seluruhnya memakai data validasi. Data uji dibuka satu kali di akhir. Seluruh data tetap berasal dari simulator, bukan dari saluran Mangunharjo."
+}

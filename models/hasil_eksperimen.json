@@ -1,0 +1,44 @@
+{
+  "saluran_latih": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F"
+  ],
+  "saluran_uji": [
+    "G",
+    "H",
+    "I"
+  ],
+  "hasil": [
+    {
+      "cara": "1. Mesin aturan saja",
+      "tepat": 0.8447916666666667,
+      "bahaya_tertangkap": 0.7143953934740883,
+      "alarm_palsu": 0.054453132933888496,
+      "kritis_terbaca_aman": 0.1882876204595997,
+      "terlalu_waspada": 0.07808641975308642,
+      "kurang_waspada": 0.07712191358024692
+    },
+    {
+      "cara": "2. Model terawasi saja",
+      "tepat": 0.9444444444444444,
+      "bahaya_tertangkap": 0.6871401151631478,
+      "alarm_palsu": 0.008774245963237535,
+      "kritis_terbaca_aman": 0.0007412898443291327,
+      "terlalu_waspada": 0.0261766975308642,
+      "kurang_waspada": 0.029378858024691357
+    },
+    {
+      "cara": "3. Aturan + model (menaikkan saja)",
+      "tepat": 0.8862654320987654,
+      "bahaya_tertangkap": 0.7500959692898272,
+      "alarm_palsu": 0.05563115669747131,
+      "kritis_terbaca_aman": 0.0,
+      "terlalu_waspada": 0.09259259259259259,
+      "kurang_waspada": 0.021141975308641977
+    }
+  ]
+}

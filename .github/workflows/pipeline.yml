@@ -1,0 +1,107 @@
+name: SIGAP Drainase — Siklus Pemantauan
+
+on:
+  schedule:
+    # Setiap 30 menit. Cron GitHub memakai waktu UTC.
+    # Interval ini dipilih karena genangan drainase berkembang dalam hitungan
+    # jam, bukan hari. Peringatan yang datang 3 jam sekali sudah terlambat.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Uji coba, tidak menulis apa pun"
+        type: boolean
+        default: false
+      paksa_kirim:
+        description: "Abaikan jeda anti-spam"
+        type: boolean
+        default: false
+
+concurrency:
+  group: siklus-sigap
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  siklus:
+    name: Evaluasi & Notifikasi
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Pasang dependensi
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Periksa keberadaan model
+        run: |
+          ls -lh models/ || true
+          if [ ! -f models/isolation_forest.joblib ]; then
+            echo "::warning::Model anomali belum ada. Sistem tetap berjalan "\
+                 "memakai matriks aturan saja, tanpa pendapat kedua."
+          fi
+
+      - name: Jalankan siklus
+        env:
+          SUPABASE_URL:             ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:             ${{ secrets.SUPABASE_KEY }}
+          VEGA_BASE_URL:            ${{ secrets.VEGA_BASE_URL }}
+          VEGA_API_TOKEN:           ${{ secrets.VEGA_API_TOKEN }}
+          VEGA_DEVICE_ID:           ${{ secrets.VEGA_DEVICE_ID }}
+          TELEGRAM_BOT_TOKEN:       ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ADMIN_CHAT_ID:   ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+          WHATSAPP_TOKEN:           ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          SALURAN_ID:               ${{ vars.SALURAN_ID }}
+          SALURAN_NAMA:             ${{ vars.SALURAN_NAMA }}
+          SALURAN_LAT:              ${{ vars.SALURAN_LAT }}
+          SALURAN_LON:              ${{ vars.SALURAN_LON }}
+          TINGGI_PASANG_MM:         ${{ vars.TINGGI_PASANG_MM }}
+          LEBAR_SALURAN_MM:         ${{ vars.LEBAR_SALURAN_MM }}
+          KEDALAMAN_SALURAN_MM:     ${{ vars.KEDALAMAN_SALURAN_MM }}
+          PANJANG_SEGMEN_M:         ${{ vars.PANJANG_SEGMEN_M }}
+          DEBIT_RANCANGAN_LPM:      ${{ vars.DEBIT_RANCANGAN_LPM }}
+          AMBANG_ENDAPAN_TINGGI:    ${{ vars.AMBANG_ENDAPAN_TINGGI }}
+          AMBANG_ENDAPAN_SANGAT_TINGGI: ${{ vars.AMBANG_ENDAPAN_SANGAT_TINGGI }}
+          AMBANG_DEBIT_MENURUN:     ${{ vars.AMBANG_DEBIT_MENURUN }}
+          AMBANG_DEBIT_SANGAT_RENDAH: ${{ vars.AMBANG_DEBIT_SANGAT_RENDAH }}
+          SITUS_URL:                ${{ vars.SITUS_URL }}
+          TF_CPP_MIN_LOG_LEVEL:     "2"
+        run: |
+          ARG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARG="$ARG --dry-run"; fi
+          if [ "${{ inputs.paksa_kirim }}" = "true" ]; then ARG="$ARG --paksa-kirim"; fi
+          python -m src.main $ARG
+
+      - name: Proses perintah bot yang masuk
+        if: always()
+        continue-on-error: true
+        env:
+          SUPABASE_URL:       ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:       ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          SITUS_URL:          ${{ vars.SITUS_URL }}
+        run: python bot/bot_daftar.py --sekali
+
+      - name: Beri tahu admin bila siklus gagal
+        if: failure()
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ADMIN: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+        run: |
+          if [ -z "$ADMIN" ]; then exit 0; fi
+          curl -s -X POST "https://api.telegram.org/bot$TOKEN/sendMessage" \
+            -d chat_id="$ADMIN" \
+            -d text="SIGAP Drainase GAGAL. Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

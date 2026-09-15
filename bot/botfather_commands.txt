@@ -1,0 +1,44 @@
+# ============================================================
+#  CARA PAKAI BERKAS INI
+#  1. Buka Telegram, cari @BotFather
+#  2. Ketik: /setcommands
+#  3. Pilih bot Anda
+#  4. Salin blok di bawah garis ini (tanpa baris berawalan #)
+#     lalu kirim sebagai SATU pesan.
+#
+#  Cara otomatis juga tersedia:
+#     python bot/bot_daftar.py --pasang-menu
+# ============================================================
+
+status - Kondisi saluran terkini
+prediksi - Ramalan muka air 12 jam
+riwayat - Kejadian 7 hari terakhir
+lapor - Laporkan sampah atau genangan
+mitigasi - Langkah pencegahan genangan
+lokasi - Titik sensor dan ukuran saluran
+daftar - Mulai terima peringatan
+berhenti - Berhenti terima peringatan
+bantuan - Daftar perintah
+
+# ============================================================
+#  PENGATURAN TAMBAHAN DI @BotFather
+# ============================================================
+#
+#  /setdescription  -> tampil sebelum orang menekan Start:
+#     Peringatan dini genangan dan penyumbatan saluran untuk warga
+#     Mangunharjo. Tekan Start untuk menerima peringatan otomatis.
+#
+#  /setabouttext    -> SIGAP Drainase - pemantauan saluran berbasis sensor dan AI.
+#  /setuserpic      -> unggah logo 512x512
+#  /setjoingroups   -> Disable   (bot ini untuk chat pribadi)
+#  /setprivacy      -> Enable    (bot tidak membaca pesan grup)
+#
+# ============================================================
+#  TAUTAN UNTUK TOMBOL DI WEBSITE
+# ============================================================
+#  Warga : https://t.me/NAMA_BOT_ANDA?start=warga
+#  BPBD  : https://t.me/NAMA_BOT_ANDA?start=bpbd
+#
+#  Parameter setelah tanda tanya menentukan peran pendaftar secara
+#  otomatis, sehingga warga dan petugas menerima jenis pesan yang
+#  berbeda tanpa perlu mengisi apa pun.

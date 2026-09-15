@@ -1,0 +1,56 @@
+{
+  "dilatih_pada": "2026-09-15T18:37:01.015370+00:00",
+  "sumber": "sintetis",
+  "seed_latih": [
+    2,
+    6,
+    9,
+    13,
+    15,
+    1
+  ],
+  "seed_uji": [
+    4,
+    5,
+    8,
+    14,
+    19,
+    7
+  ],
+  "jumlah_baris_latih": 210240,
+  "jumlah_baris_uji": 210240,
+  "fitur": [
+    "permukaan_mm",
+    "tinggi_air_mm",
+    "rasio_endapan",
+    "rasio_debit",
+    "rasio_air",
+    "laju_naik",
+    "debit_lpm",
+    "ph_air",
+    "hujan_mm",
+    "hujan_3jam",
+    "permukaan_rerata_1jam",
+    "permukaan_simpangan_1jam",
+    "debit_rerata_1jam",
+    "selisih_air_debit",
+    "laju_dasar",
+    "lonjakan_dasar",
+    "jam_sin",
+    "jam_cos"
+  ],
+  "kelas": [
+    "AMAN",
+    "WASPADA",
+    "SIAGA",
+    "KRITIS"
+  ],
+  "metrik_uji": {
+    "tepat": 0.9632182267884323,
+    "bahaya_tertangkap": 0.9411764705882353,
+    "alarm_palsu": 0.01083626578348168,
+    "kritis_terbaca_aman": 0.007425480004243132,
+    "terlalu_waspada": 0.02093321917808219,
+    "kurang_waspada": 0.01584855403348554
+  }
+}

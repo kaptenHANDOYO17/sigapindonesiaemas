@@ -1,0 +1,26 @@
+.env
+*.env
+!.env.example
+!frontend/.env.local.example
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+bot/.offset
+
+datasets/publik/
+datasets/*.zip
+datasets/sintetis_drainase.csv
+
+models/arsip/
+models/*.csv
+
+# Frontend
+node_modules/
+.next/
+out/
+.vercel
+
+.DS_Store
+.vscode/
+.idea/

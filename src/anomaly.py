@@ -1,0 +1,85 @@
+"""Inferensi deteksi anomali dengan Isolation Forest."""
+from __future__ import annotations
+
+import json
+import logging
+
+import joblib
+import numpy as np
+import pandas as pd
+
+from .config import settings
+from .features import FITUR
+
+log = logging.getLogger("anomali")
+
+_model = None
+_scaler = None
+_meta: dict = {}
+
+
+def tersedia() -> bool:
+    return settings.model.anomali.exists() and settings.model.anomali_scaler.exists()
+
+
+def _muat() -> None:
+    global _model, _scaler, _meta
+    if _model is not None:
+        return
+    if not tersedia():
+        raise FileNotFoundError(
+            f"Model anomali belum ada di {settings.model.anomali}. "
+            "Latih dulu: python -m training.train_anomaly"
+        )
+    _model = joblib.load(settings.model.anomali)
+    _scaler = joblib.load(settings.model.anomali_scaler)
+    if settings.model.anomali_meta.exists():
+        _meta = json.loads(settings.model.anomali_meta.read_text(encoding="utf-8"))
+    log.info("Model anomali dimuat (dilatih %s).", _meta.get("dilatih_pada", "?"))
+
+
+def ambang_terlatih() -> float:
+    """
+    Ambang skor yang dihitung saat pelatihan, bukan angka tetap di .env.
+
+    Skor Isolation Forest tidak punya satuan mutlak: nilainya bergeser
+    mengikuti sebaran data latih. Ambang -0,05 pada satu saluran bisa berarti
+    "sangat janggal", sedangkan pada saluran lain berarti "biasa saja".
+    Karena itu ambang WAJIB diambil dari metadata hasil pelatihan. Nilai di
+    berkas .env hanya dipakai bila metadata belum ada.
+    """
+    try:
+        _muat()
+    except FileNotFoundError:
+        return settings.ambang.anomali
+    return float(_meta.get("ambang_skor", settings.ambang.anomali))
+
+
+def skor(df: pd.DataFrame) -> float | None:
+    """
+    Skor kejanggalan baris terakhir. Makin negatif makin janggal.
+
+    Mengembalikan None bila model belum dilatih. Sistem tetap berjalan tanpa
+    model ini, hanya kehilangan pendapat kedua.
+    """
+    try:
+        _muat()
+    except FileNotFoundError as e:
+        log.warning("%s", e)
+        return None
+    try:
+        x = df[FITUR].to_numpy(dtype="float32")[-1:]
+        return float(_model.score_samples(_scaler.transform(x))[0])
+    except Exception as e:  # noqa: BLE001
+        log.error("Gagal menghitung skor anomali: %s", e)
+        return None
+
+
+def skor_banyak(df: pd.DataFrame) -> np.ndarray | None:
+    """Skor untuk seluruh baris. Dipakai saat evaluasi dan pelatihan ulang."""
+    try:
+        _muat()
+    except FileNotFoundError:
+        return None
+    x = df[FITUR].to_numpy(dtype="float32")
+    return _model.score_samples(_scaler.transform(x))
