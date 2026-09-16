@@ -39,6 +39,11 @@ const API = (metode) =>
 
 const IKON = { AMAN: "\u{1F7E2}", WASPADA: "\u{1F7E1}", SIAGA: "\u{1F7E0}", KRITIS: "\u{1F534}" };
 
+// Dipakai pada perintah yang menyebut tautan situs. Diambil dari Environment
+// Variable agar tidak perlu mengubah kode ketika alamatnya berganti.
+const SITUS = (process.env.NEXT_PUBLIC_SITUS_URL ||
+               "https://sigapindonesiaemas.vercel.app").replace(/\/$/, "");
+
 async function kirim(chatId, teks, tombol) {
   const muatan = {
     chat_id: chatId, text: teks, parse_mode: "HTML",
@@ -151,9 +156,15 @@ async function cmdStart(db, chatId, nama, argumen) {
     "Perintah yang bisa dipakai kapan saja:\n" +
     "/status \u2014 kondisi saluran sekarang\n" +
     "/prediksi \u2014 ramalan muka air 12 jam\n" +
+    "/riwayat \u2014 kejadian tujuh hari terakhir\n" +
     "/lapor \u2014 laporkan sampah atau genangan\n" +
-    "/mitigasi \u2014 langkah pencegahan\n" +
-    "/berhenti \u2014 berhenti menerima peringatan");
+    "/mitigasi \u2014 langkah pencegahan genangan\n" +
+    "/lokasi \u2014 titik sensor dan ukuran saluran\n" +
+    "/dashboard \u2014 buka situs SIGAP\n" +
+    "/berhenti \u2014 berhenti menerima peringatan\n\n" +
+    "Anda juga boleh langsung bertanya dengan bahasa biasa. Saya bisa diajak " +
+    "mengobrol soal saluran, kebersihan lingkungan, dan menjaga kesehatan " +
+    "setelah genangan surut.");
 }
 
 async function cmdStatus(db, chatId) {
@@ -281,14 +292,93 @@ async function cmdBantuan(chatId) {
     "<b>Perintah SIGAP Drainase</b>\n\n" +
     "/status \u2014 kondisi saluran terkini\n" +
     "/prediksi \u2014 ramalan muka air 12 jam\n" +
+    "/riwayat \u2014 kejadian tujuh hari terakhir\n" +
     "/lapor \u2014 laporkan sampah atau genangan\n" +
-    "/mitigasi \u2014 langkah pencegahan\n" +
-    "/berhenti \u2014 berhenti menerima peringatan\n\n" +
+    "/mitigasi \u2014 langkah pencegahan genangan\n" +
+    "/lokasi \u2014 titik sensor dan ukuran saluran\n" +
+    "/daftar \u2014 mulai terima peringatan\n" +
+    "/berhenti \u2014 berhenti terima peringatan\n" +
+    "/dashboard \u2014 buka situs SIGAP\n\n" +
     "Anda juga bisa langsung mengetik pertanyaan dengan bahasa biasa, tanpa perintah. " +
     "Contohnya: <i>saluran depan rumah saya gimana ya?</i>\n\n" +
     "Peringatan dikirim otomatis hanya saat status Waspada ke atas.");
 }
 
+
+
+async function cmdRiwayat(db, chatId) {
+  const sejak = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { data } = await db.from("status_ai")
+    .select("status, timestamp, rasio_endapan, estimasi_volume_m3")
+    .gte("timestamp", sejak)
+    .order("timestamp", { ascending: false })
+    .limit(400);
+
+  if (!data?.length) {
+    return kirim(chatId, "Belum ada catatan tujuh hari terakhir. Sensor kemungkinan " +
+                         "belum terpasang, atau sistem baru mulai berjalan.");
+  }
+
+  // Ringkas menjadi per hari, dan sebutkan status terparah pada hari itu.
+  const urut = { AMAN: 0, WASPADA: 1, SIAGA: 2, KRITIS: 3 };
+  const perHari = new Map();
+  for (const b of data) {
+    const hari = new Date(b.timestamp).toLocaleDateString("id-ID",
+      { weekday: "long", day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
+    const lama = perHari.get(hari);
+    if (!lama || urut[b.status] > urut[lama.status]) {
+      perHari.set(hari, { status: b.status, endapan: b.rasio_endapan });
+    }
+  }
+
+  const baris = ["\u{1F4C5} <b>Kejadian tujuh hari terakhir</b>", "",
+                 "Yang ditampilkan adalah status terparah pada setiap hari.", ""];
+  for (const [hari, d] of perHari) {
+    baris.push(`${IKON[d.status] || "\u26AA"} <b>${hari}</b> \u2014 ${d.status}` +
+               (d.endapan != null ? ` (endapan ${Math.round(d.endapan * 100)}%)` : ""));
+  }
+
+  const berbahaya = [...perHari.values()].filter((d) => d.status === "SIAGA" || d.status === "KRITIS").length;
+  baris.push("", berbahaya
+    ? `Ada <b>${berbahaya} hari</b> berstatus Siaga atau Kritis dalam sepekan ini.`
+    : "Tidak ada hari berstatus Siaga maupun Kritis dalam sepekan ini.");
+  baris.push("", `Selengkapnya di dasbor: ${SITUS}`);
+  return kirim(chatId, baris.join("\n"));
+}
+
+
+async function cmdLokasi(db, chatId) {
+  const { data } = await db.from("peta_sensor")
+    .select("kode, nama, alamat, lat, lon, terpasang, status, kedalaman_saluran_mm")
+    .order("kode");
+
+  if (!data?.length) {
+    return kirim(chatId, "Data titik sensor belum diisi. Hubungi pengelola.");
+  }
+
+  const baris = ["\u{1F4CD} <b>Titik pantau SIGAP Drainase</b>", ""];
+  for (const t of data) {
+    baris.push(`${IKON[t.status] || "\u26AA"} <b>${t.kode} \u2014 ${t.nama}</b>`);
+    if (t.alamat) baris.push(`   ${t.alamat}`);
+    baris.push(`   Kedalaman saluran: ${t.kedalaman_saluran_mm} mm`);
+    baris.push(`   Status: ${t.status || "belum ada data"}` +
+               (t.terpasang ? "" : " \u00b7 <i>alat belum terpasang</i>"));
+    baris.push(`   Peta: https://www.google.com/maps?q=${t.lat},${t.lon}`);
+    baris.push("");
+  }
+  baris.push(`Peta lengkap beserta statusnya: ${SITUS}/peta`);
+  return kirim(chatId, baris.join("\n"));
+}
+
+
+async function cmdDashboard(chatId) {
+  return kirim(chatId,
+    "\u{1F5A5}\uFE0F <b>Situs SIGAP Drainase</b>\n\n" +
+    `Dasbor kondisi saluran:\n${SITUS}\n\n` +
+    `Peta titik sensor:\n${SITUS}/peta\n\n` +
+    `Laporkan sampah atau genangan:\n${SITUS}/lapor\n\n` +
+    `Cara kerja dan hasil pengujian:\n${SITUS}/tentang`);
+}
 
 /* ------------------------------------------------------------- obrolan */
 
@@ -310,8 +400,32 @@ async function cmdBantuan(chatId) {
  * Bila XAI_API_KEY belum diisi, bot menjawab dengan petunjuk perintah biasa.
  * Tidak ada bagian lain yang bergantung pada fitur ini.
  */
+function penyediaObrolan() {
+  // Groq didahulukan karena gratis pada tingkat pemakaian wajar, dan
+  // jawabannya cepat. xAI dipakai bila Groq tidak diisi.
+  if (process.env.GROQ_API_KEY) {
+    return {
+      nama: "groq",
+      url: "https://api.groq.com/openai/v1/chat/completions",
+      kunci: process.env.GROQ_API_KEY,
+      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    };
+  }
+  if (process.env.XAI_API_KEY) {
+    return {
+      nama: "xai",
+      url: "https://api.x.ai/v1/chat/completions",
+      kunci: process.env.XAI_API_KEY,
+      model: process.env.XAI_MODEL || "grok-4.6",
+    };
+  }
+  return null;
+}
+
+
 async function cmdObrol(db, chatId, nama, teks) {
-  if (!process.env.XAI_API_KEY) {
+  const penyedia = penyediaObrolan();
+  if (!penyedia) {
     return kirim(chatId,
       "Saya belum bisa mengobrol bebas. Yang bisa saya bantu sekarang:\n\n" +
       "/status \u2014 kondisi saluran sekarang\n" +
@@ -356,18 +470,34 @@ async function cmdObrol(db, chatId, nama, teks) {
     `4. Bila warga melaporkan sampah atau genangan, ajak mengetik /lapor diikuti ` +
     `keterangannya, agar laporannya tercatat dan sampai ke petugas.\n` +
     `5. Jangan menjanjikan kapan petugas datang.\n` +
-    `6. Bila ditanya di luar topik drainase, banjir, atau sistem ini, jawab ramah ` +
-    `seadanya lalu kembalikan ke topik.`;
+    `6. Jangan mendiagnosis penyakit dan jangan menyebut nama obat. Bila warga ` +
+    `mengeluh sakit, sarankan memeriksakan diri ke puskesmas atau bidan terdekat.\n\n` +
+    `TOPIK YANG BOLEH ANDA BAHAS DENGAN LELUASA\n` +
+    `Selain kondisi saluran, Anda boleh mengobrol soal kesehatan lingkungan dan ` +
+    `kebersihan permukiman, misalnya:\n` +
+    `- memilah sampah rumah tangga, dan mengapa minyak jelantah tidak boleh ` +
+    `dibuang ke saluran\n` +
+    `- menguras bak mandi dan menutup wadah air untuk mencegah jentik nyamuk ` +
+    `demam berdarah, yang biasanya meningkat setelah genangan surut\n` +
+    `- mencuci tangan dengan sabun setelah membersihkan saluran atau menyentuh ` +
+    `air genangan\n` +
+    `- bahaya leptospirosis dari air genangan yang tercemar air kencing tikus, ` +
+    `dan pentingnya memakai sepatu bot serta menutup luka terbuka\n` +
+    `- menjaga sumur dan air minum tetap bersih setelah banjir\n` +
+    `- kerja bakti dan gotong royong membersihkan saluran\n\n` +
+    `Untuk topik-topik itu, berikan saran umum yang aman dan mudah dikerjakan. ` +
+    `Tetap jangan memberi dosis obat, jangan mendiagnosis, dan jangan menakut-nakuti. ` +
+    `Bila keluhannya terdengar serius, arahkan ke puskesmas.`;
 
   try {
-    const r = await fetch("https://api.x.ai/v1/chat/completions", {
+    const r = await fetch(penyedia.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+        Authorization: `Bearer ${penyedia.kunci}`,
       },
       body: JSON.stringify({
-        model: process.env.XAI_MODEL || "grok-4.6",
+        model: penyedia.model,
         temperature: 0.6,
         max_tokens: 400,
         messages: [
@@ -380,7 +510,7 @@ async function cmdObrol(db, chatId, nama, teks) {
 
     if (!r.ok) {
       const sebab = hasil?.error?.message || hasil?.error || `HTTP ${r.status}`;
-      console.error("xai:", sebab);
+      console.error(penyedia.nama + ":", sebab);
       return kirim(chatId,
         "Maaf, saya sedang tidak bisa mengobrol. Tetapi perintah biasa tetap jalan:\n" +
         "/status, /prediksi, /lapor, /mitigasi");
@@ -439,6 +569,10 @@ export async function POST(req) {
       case "start":    await cmdStart(db, chatId, nama, argumen); break;
       case "daftar":   await cmdStart(db, chatId, nama, ""); break;
       case "status":   await cmdStatus(db, chatId); break;
+      case "riwayat":  await cmdRiwayat(db, chatId); break;
+      case "lokasi":   await cmdLokasi(db, chatId); break;
+      case "dashboard":
+      case "situs":    await cmdDashboard(chatId); break;
       case "prediksi": await cmdPrediksi(db, chatId); break;
       case "mitigasi": await cmdMitigasi(chatId); break;
       case "lapor":    await cmdLapor(db, chatId, nama, argumen); break;

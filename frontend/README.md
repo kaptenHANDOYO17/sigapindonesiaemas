@@ -13,7 +13,8 @@ paket gratis.
 | `/` | umum | Dasbor kondisi saluran, penampang, grafik 48 jam, ramalan 12 jam |
 | `/tentang` | umum | Cara kerja, hasil pengujian, dan keterbatasan sistem |
 | `/daftar` | warga | Pendaftaran nomor penerima peringatan |
-| `/lapor` | warga | Melaporkan sampah, genangan, atau sumbatan |
+| `/lapor` | warga | Melaporkan sampah atau genangan, dengan lokasi dan foto |
+| `/peta` | umum | Peta titik sensor beserta statusnya |
 | `/berhenti` | warga | Berhenti menerima peringatan |
 | `/masuk` | pengelola | Masuk dengan surel dan kata sandi |
 | `/admin` | pengelola | Ringkasan, laporan warga, pendaftaran, verifikasi |
@@ -71,8 +72,9 @@ Jalankan empat berkas ini di Supabase, menu **SQL Editor**, berurutan:
 2. `database/migrasi_pendaftaran.sql` — kolom untuk pendaftaran lewat situs
 3. `database/migrasi_admin_laporan.sql` — tabel pengelola dan laporan warga
 4. `database/migrasi_profil_konfirmasi.sql` — foto profil dan kode konfirmasi nomor
-5. `database/akun_pengelola.sql` — membuat akun pengelola pertama
-6. `database/data_contoh.sql` — mengisi seluruh tabel dengan data peragaan (opsional)
+5. `database/migrasi_peta_media.sql` — titik sensor, peta, dan media laporan
+6. `database/akun_pengelola.sql` — membuat akun pengelola pertama
+7. `database/data_contoh.sql` — mengisi seluruh tabel dengan data peragaan (opsional)
 
 Ketiga yang pertama aman dijalankan berulang kali. Berkas keempat memuat kata
 sandi awal; **ganti kata sandinya lebih dulu**, dan ganti lagi melalui menu

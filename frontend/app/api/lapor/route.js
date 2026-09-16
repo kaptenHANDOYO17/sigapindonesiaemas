@@ -60,6 +60,15 @@ export async function POST(req) {
 
   const jenis = JENIS.includes(isi?.jenis) ? isi.jenis : "lainnya";
 
+  // Koordinat hanya diterima bila masuk akal. Nilai di luar wilayah Indonesia
+  // hampir pasti salah kirim, dan menyimpannya hanya akan menyesatkan petugas.
+  const angka = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  let lat = angka(isi?.lat), lon = angka(isi?.lon);
+  if (lat === null || lon === null ||
+      lat < -11 || lat > 6 || lon < 95 || lon > 141) {
+    lat = null; lon = null;
+  }
+
   const db = supabaseServer();
   const { data, error } = await db.from("laporan_warga").insert({
     nama_pelapor: String(isi?.nama || "").trim().slice(0, 80) || null,
@@ -69,6 +78,11 @@ export async function POST(req) {
     isi: teks,
     sumber: "situs",
     status: "baru",
+    lat,
+    lon,
+    akurasi_m: angka(isi?.akurasi) ,
+    media_url: typeof isi?.media_url === "string" ? isi.media_url.slice(0, 500) : null,
+    media_jenis: ["foto", "video"].includes(isi?.media_jenis) ? isi.media_jenis : null,
   }).select("id").single();
 
   if (error) {
@@ -92,8 +106,11 @@ export async function POST(req) {
             `\u{1F4E2} <b>Laporan warga baru</b> (No. ${data.id})\n\n` +
             `Jenis  : ${jenis}\n` +
             `Wilayah: ${isi?.wilayah || "-"}\n` +
-            `Pelapor: ${isi?.nama || "tidak disebutkan"}\n\n` +
-            teks.slice(0, 700),
+            `Pelapor: ${isi?.nama || "tidak disebutkan"}\n` +
+            (lat !== null
+              ? `Lokasi : https://www.google.com/maps?q=${lat},${lon}\n` : "") +
+            (isi?.media_url ? `Media  : ${isi.media_url}\n` : "") +
+            `\n` + teks.slice(0, 700),
         }),
       });
     } catch { /* diabaikan dengan sengaja */ }

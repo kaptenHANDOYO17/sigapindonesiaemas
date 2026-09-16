@@ -46,6 +46,7 @@ export default function RootLayout({ children }) {
             <nav className="kepala-kanan">
               <a href="/">Dasbor</a>
               <a href="/daftar">Daftar Peringatan</a>
+              <a href="/peta">Peta Sensor</a>
               <a href="/lapor">Lapor</a>
               <a href="/tentang">Tentang Sistem</a>
               <a href="/simulasi">Simulasi</a>

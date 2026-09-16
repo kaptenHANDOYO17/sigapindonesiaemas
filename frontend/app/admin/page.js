@@ -21,7 +21,15 @@ const TAB = [
   ["laporan", "Laporan Warga"],
   ["pendaftaran", "Pendaftaran Nomor"],
   ["verifikasi", "Verifikasi Lapangan"],
+  ["sensor", "Titik Sensor"],
 ];
+
+const TITIK_KOSONG = {
+  kode: "", nama: "", alamat: "", lat: -7.0662, lon: 110.4718,
+  tinggi_pasang_mm: 1200, kedalaman_saluran_mm: 800, lebar_saluran_mm: 600,
+  panjang_segmen_m: 50, debit_rancangan_lpm: 900, aktif: true, terpasang: false,
+  keterangan: "",
+};
 
 export default function Admin() {
   const [profil, setProfil] = useState(null);
@@ -36,6 +44,8 @@ export default function Admin() {
   const [cari, setCari] = useState("");
   const [saringKontak, setSaringKontak] = useState("semua");
   const [sunting, setSunting] = useState(null);
+  const [titik, setTitik] = useState([]);
+  const [suntingTitik, setSuntingTitik] = useState(null);
   const [kontakAktif, setKontakAktif] = useState(0);
   const [verifikasi, setVerifikasi] = useState([]);
   const [statusTerkini, setStatusTerkini] = useState(null);
@@ -52,7 +62,7 @@ export default function Admin() {
     if (!profil) return;
     setSibuk(true);
     try {
-      const [l, k, v, s] = await Promise.all([
+      const [l, k, v, s, t] = await Promise.all([
         supabase.from("laporan_warga").select("*")
           .order("waktu", { ascending: false }).limit(200),
         supabase.from("kontak_stakeholder")
@@ -62,6 +72,7 @@ export default function Admin() {
           .order("waktu_periksa", { ascending: false }).limit(50),
         supabase.from("status_ai").select("*")
           .order("timestamp", { ascending: false }).limit(1),
+        supabase.from("titik_sensor").select("*").order("kode"),
       ]);
       setLaporan(l.data ?? []);
       setSemuaKontak(k.data ?? []);
@@ -69,6 +80,7 @@ export default function Admin() {
       setKontakAktif((k.data ?? []).filter((x) => x.aktif && x.terkonfirmasi).length);
       setVerifikasi(v.data ?? []);
       setStatusTerkini(s.data?.[0] ?? null);
+      setTitik(t.data ?? []);
     } catch (e) {
       setKabar({ jenis: "buruk", teks: "Gagal memuat data. Coba muat ulang." });
     } finally {
@@ -174,6 +186,58 @@ export default function Admin() {
       setTertunda((s) => s.filter((x) => x.id !== baris.id));
       setKabar({ jenis: "baik", teks: "Kontak dihapus." });
     } else setKabar({ jenis: "buruk", teks: error.message });
+    setSibuk(false);
+  }
+
+  async function simpanTitik(t) {
+    if (!t.kode.trim() || !t.nama.trim()) {
+      return setKabar({ jenis: "buruk", teks: "Kode dan nama titik wajib diisi." });
+    }
+    const lat = parseFloat(t.lat), lon = parseFloat(t.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) ||
+        lat < -11 || lat > 6 || lon < 95 || lon > 141) {
+      return setKabar({ jenis: "buruk",
+        teks: "Koordinat di luar wilayah Indonesia. Periksa kembali angkanya." });
+    }
+
+    setSibuk(true);
+    const isi = {
+      kode: t.kode.trim().toUpperCase(), nama: t.nama.trim(),
+      alamat: t.alamat?.trim() || null, lat, lon,
+      tinggi_pasang_mm: parseInt(t.tinggi_pasang_mm) || 1200,
+      kedalaman_saluran_mm: parseInt(t.kedalaman_saluran_mm) || 800,
+      lebar_saluran_mm: parseInt(t.lebar_saluran_mm) || 600,
+      panjang_segmen_m: parseInt(t.panjang_segmen_m) || 50,
+      debit_rancangan_lpm: parseInt(t.debit_rancangan_lpm) || 900,
+      aktif: Boolean(t.aktif), terpasang: Boolean(t.terpasang),
+      keterangan: t.keterangan?.trim() || null,
+      diperbarui_pada: new Date().toISOString(),
+    };
+
+    const { data, error } = t.id
+      ? await supabase.from("titik_sensor").update(isi).eq("id", t.id).select().single()
+      : await supabase.from("titik_sensor").insert(isi).select().single();
+
+    if (error) setKabar({ jenis: "buruk", teks: error.message });
+    else {
+      setTitik((s) => t.id ? s.map((x) => (x.id === data.id ? data : x))
+                           : [...s, data].sort((a, b) => a.kode.localeCompare(b.kode)));
+      setSuntingTitik(null);
+      setKabar({ jenis: "baik", teks: `Titik ${data.kode} tersimpan.` });
+    }
+    setSibuk(false);
+  }
+
+  async function hapusTitik(t) {
+    if (!confirm(`Hapus titik ${t.kode}? Data sensor dan riwayat statusnya tidak ikut terhapus.`))
+      return;
+    setSibuk(true);
+    const { error } = await supabase.from("titik_sensor").delete().eq("id", t.id);
+    if (error) setKabar({ jenis: "buruk", teks: error.message });
+    else {
+      setTitik((s) => s.filter((x) => x.id !== t.id));
+      setKabar({ jenis: "baik", teks: "Titik dihapus." });
+    }
     setSibuk(false);
   }
 
@@ -370,6 +434,22 @@ export default function Admin() {
                     </span>
                   </div>
                   <p className="kartu-laporan-isi">{l.isi}</p>
+                  {(l.lat || l.media_url) && (
+                    <div className="lampiran-laporan">
+                      {l.lat && (
+                        <a href={`https://www.google.com/maps?q=${l.lat},${l.lon}`}
+                           target="_blank" rel="noopener noreferrer">
+                          Buka titik lokasi
+                          {l.akurasi_m ? ` (ketelitian ±${Math.round(l.akurasi_m)} m)` : ""}
+                        </a>
+                      )}
+                      {l.media_url && (
+                        l.media_jenis === "video"
+                          ? <video src={l.media_url} controls preload="metadata" />
+                          : <img src={l.media_url} alt={`Lampiran laporan ${l.id}`} loading="lazy" />
+                      )}
+                    </div>
+                  )}
                   <div className="kartu-laporan-kaki">
                     <span>
                       Pelapor: {l.nama_pelapor || "anonim"}
@@ -525,6 +605,170 @@ export default function Admin() {
             formulir tetapi belum membuka bot. Bot Telegram tidak dapat menghubungi siapa pun
             hanya berbekal nomor telepon, sehingga peringatan belum akan sampai kepadanya.
             Ingatkan lewat kunjungan kader atau telepon biasa.
+          </div>
+        </section>
+      )}
+
+      {/* ------------------------------ SENSOR ------------------------------ */}
+      {tab === "sensor" && (
+        <section className="panel">
+          <h2>Titik Sensor</h2>
+          <p className="panel-ket" style={{ maxWidth: "80ch" }}>
+            Letak dan ukuran setiap titik pantau. Kolom <b>Kode</b> dipakai sistem untuk
+            mencocokkan pembacaan sensor, jadi ia harus sama persis dengan yang diisikan pada
+            firmware ESP32.
+          </p>
+
+          <div className="kabar kabar-buruk" style={{ maxWidth: "80ch" }}>
+            <b>Kelima angka ukuran saluran wajib diukur langsung di lapangan.</b> Nilai bawaan
+            hanyalah tebakan agar kolomnya tidak kosong. Bila angkanya salah, seluruh persentase
+            yang ditampilkan sistem ikut salah, dan peringatan akan meleset.
+          </div>
+
+          {!suntingTitik && (
+            <button className="tombol" style={{ marginBottom: 16 }}
+                    onClick={() => setSuntingTitik({ ...TITIK_KOSONG })}>
+              Tambah titik baru
+            </button>
+          )}
+
+          {suntingTitik && (
+            <div className="kotak-sunting">
+              <h3>{suntingTitik.id ? `Ubah titik ${suntingTitik.kode}` : "Titik baru"}</h3>
+              <div className="formulir">
+                <div className="dua">
+                  <div className="baris">
+                    <label>Kode *</label>
+                    <small>Contoh: MTS-01. Huruf besar, tanpa spasi.</small>
+                    <input value={suntingTitik.kode}
+                           onChange={(e) => setSuntingTitik({ ...suntingTitik, kode: e.target.value })} />
+                  </div>
+                  <div className="baris">
+                    <label>Nama titik *</label>
+                    <input value={suntingTitik.nama}
+                           onChange={(e) => setSuntingTitik({ ...suntingTitik, nama: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="baris">
+                  <label>Alamat</label>
+                  <input value={suntingTitik.alamat || ""}
+                         onChange={(e) => setSuntingTitik({ ...suntingTitik, alamat: e.target.value })} />
+                </div>
+
+                <div className="dua">
+                  <div className="baris">
+                    <label>Lintang (latitude) *</label>
+                    <small>Bernilai negatif untuk wilayah Indonesia bagian selatan.</small>
+                    <input type="number" step="0.000001" value={suntingTitik.lat}
+                           onChange={(e) => setSuntingTitik({ ...suntingTitik, lat: e.target.value })} />
+                  </div>
+                  <div className="baris">
+                    <label>Bujur (longitude) *</label>
+                    <input type="number" step="0.000001" value={suntingTitik.lon}
+                           onChange={(e) => setSuntingTitik({ ...suntingTitik, lon: e.target.value })} />
+                  </div>
+                </div>
+
+                <p style={{ fontSize: ".8rem", color: "var(--redup)", margin: "-4px 0 6px" }}>
+                  Cara memperoleh koordinat: buka Google Maps di ponsel saat berada di titiknya,
+                  tekan lama pada peta, lalu salin dua angka yang muncul di bagian atas.
+                </p>
+
+                <div className="empat">
+                  {[["tinggi_pasang_mm", "Tinggi pasang (mm)"],
+                    ["kedalaman_saluran_mm", "Kedalaman saluran (mm)"],
+                    ["lebar_saluran_mm", "Lebar dasar (mm)"],
+                    ["panjang_segmen_m", "Panjang segmen (m)"],
+                    ["debit_rancangan_lpm", "Debit bersih (liter/menit)"]].map(([k, l]) => (
+                    <div className="baris" key={k}>
+                      <label>{l}</label>
+                      <input type="number" value={suntingTitik[k]}
+                             onChange={(e) => setSuntingTitik({ ...suntingTitik, [k]: e.target.value })} />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="baris">
+                  <label>Keterangan</label>
+                  <input value={suntingTitik.keterangan || ""}
+                         onChange={(e) => setSuntingTitik({ ...suntingTitik, keterangan: e.target.value })} />
+                </div>
+
+                <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                  <label style={{ display: "flex", gap: 8, fontSize: ".88rem", alignItems: "center" }}>
+                    <input type="checkbox" checked={suntingTitik.aktif}
+                           onChange={(e) => setSuntingTitik({ ...suntingTitik, aktif: e.target.checked })} />
+                    Tampilkan di peta
+                  </label>
+                  <label style={{ display: "flex", gap: 8, fontSize: ".88rem", alignItems: "center" }}>
+                    <input type="checkbox" checked={suntingTitik.terpasang}
+                           onChange={(e) => setSuntingTitik({ ...suntingTitik, terpasang: e.target.checked })} />
+                    Alat sudah terpasang di lokasi
+                  </label>
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button className="tombol" disabled={sibuk}
+                          onClick={() => simpanTitik(suntingTitik)}>Simpan</button>
+                  <button className="tombol tombol-halus"
+                          onClick={() => setSuntingTitik(null)}>Batal</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {titik.length === 0 ? (
+            <p className="panel-ket">
+              Belum ada titik. Jalankan database/migrasi_peta_media.sql untuk mengisi tiga
+              titik awal, atau tambahkan sendiri di atas.
+            </p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="tabel">
+                <thead>
+                  <tr>
+                    <th>Kode</th><th>Nama</th><th>Koordinat</th><th>Kedalaman</th>
+                    <th>Terpasang</th><th>Di peta</th><th>Tindakan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {titik.map((t) => (
+                    <tr key={t.id}>
+                      <td><b>{t.kode}</b></td>
+                      <td>{t.nama}<br />
+                        <span style={{ fontSize: ".76rem", color: "var(--redup)" }}>{t.alamat}</span>
+                      </td>
+                      <td style={{ whiteSpace: "nowrap", fontSize: ".8rem" }}>
+                        {Number(t.lat).toFixed(5)}, {Number(t.lon).toFixed(5)}<br />
+                        <a href={`https://www.google.com/maps?q=${t.lat},${t.lon}`}
+                           target="_blank" rel="noopener noreferrer">lihat peta</a>
+                      </td>
+                      <td>{t.kedalaman_saluran_mm} mm</td>
+                      <td>
+                        <span className="pil" style={{ background: t.terpasang ? "#2fd08a" : "#9a9a9a" }}>
+                          {t.terpasang ? "ya" : "belum"}
+                        </span>
+                      </td>
+                      <td>{t.aktif ? "ya" : "tidak"}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button className="tombol-kecil tombol-kecil-halus" disabled={sibuk}
+                                onClick={() => setSuntingTitik({ ...t })}>Ubah</button>
+                        <button className="tombol-kecil tombol-hapus" style={{ marginLeft: 6 }}
+                                disabled={sibuk} onClick={() => hapusTitik(t)}>Hapus</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="kabar kabar-info" style={{ marginTop: 18 }}>
+            Setelah menambah titik baru, isikan kodenya pada firmware ESP32 di perangkat yang
+            bersangkutan, lalu centang <b>Alat sudah terpasang</b> begitu pembacaan pertamanya
+            masuk. Selama belum dicentang, penanda di peta berwarna abu-abu, dan warga tahu
+            bahwa titik itu masih rencana.
           </div>
         </section>
       )}
