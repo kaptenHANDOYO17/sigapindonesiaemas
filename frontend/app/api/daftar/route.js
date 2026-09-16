@@ -97,6 +97,10 @@ export async function POST(req) {
   }
 
   const token = buatToken();
+  // Kode pendek yang mudah dibacakan lewat telepon atau diketik di WhatsApp.
+  // Huruf yang mudah tertukar (i, l, o, 0, 1) sengaja tidak dipakai.
+  const kode = buatToken(6).toUpperCase().replace(/[ILO01]/g, "X");
+
   const { error } = await db.from("kontak_stakeholder").insert({
     nama: String(nama).trim().slice(0, 80),
     nomor_kontak: cek.nomor,
@@ -107,6 +111,7 @@ export async function POST(req) {
     terkonfirmasi: false,
     sumber_daftar: "situs",
     token_berhenti: token,
+    kode_konfirmasi: kode,
   });
 
   if (error) {
@@ -125,9 +130,9 @@ export async function POST(req) {
     ok: true,
     status: "menunggu",
     token,
+    kode,
     pesan:
-      "Pendaftaran tersimpan. Nomor Anda akan diaktifkan setelah dikonfirmasi kader siaga " +
-      "drainase di lingkungan Anda. Bila ingin langsung aktif tanpa menunggu, daftar melalui " +
-      "bot Telegram.",
+      "Pendaftaran tersimpan. Nomor Anda belum aktif sampai kepemilikannya dipastikan. " +
+      "Pilih salah satu cara di bawah ini untuk mengaktifkannya.",
   });
 }

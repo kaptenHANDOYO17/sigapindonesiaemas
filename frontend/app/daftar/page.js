@@ -4,6 +4,7 @@ import { useState } from "react";
 import { periksaNomor } from "../../lib/nomor";
 
 const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT;
+const WA_PENGELOLA = process.env.NEXT_PUBLIC_WA_PENGELOLA;
 
 export default function Daftar() {
   const [isian, setIsian] = useState({ nama: "", nomor: "", wilayah: "", persetujuan: false });
@@ -48,25 +49,67 @@ export default function Daftar() {
           {hasil.status === "menunggu" && (
             <>
               <p className="panel-ket" style={{ marginTop: 18 }}>
-                Selama menunggu konfirmasi, nomor Anda belum menerima peringatan. Ada dua cara
-                mempercepatnya.
+                Siapa pun bisa mengetikkan nomor orang lain di formulir ini, karena itu nomor
+                Anda perlu dipastikan dulu benar milik Anda. Pilih cara yang paling mudah.
               </p>
-              <ol className="tindakan">
-                <li>
-                  <b>Daftar lewat Telegram.</b> Di sana Anda sendiri yang memulai percakapan,
-                  sehingga nomor langsung aktif tanpa menunggu siapa pun.
-                </li>
-                <li>
-                  <b>Tunggu kunjungan kader.</b> Kader siaga drainase berkunjung dua minggu sekali
-                  dan dapat mengaktifkan pendaftaran Anda di tempat.
-                </li>
-              </ol>
-              {BOT && (
-                <a className="tombol" style={{ marginTop: 14 }}
-                   href={`https://t.me/${BOT}?start=warga`} target="_blank" rel="noopener noreferrer">
-                  Aktifkan sekarang lewat Telegram
-                </a>
+
+              {hasil.kode && (
+                <div className="kotak-kode">
+                  <span>Kode konfirmasi Anda</span>
+                  <b>{hasil.kode}</b>
+                </div>
               )}
+
+              <div className="pilihan-konfirmasi">
+                <article>
+                  <h3>Cara 1 &mdash; kirim kode lewat WhatsApp</h3>
+                  <p>
+                    Tekan tombol di bawah. WhatsApp akan terbuka dengan pesan yang sudah terisi,
+                    Anda tinggal menekan kirim. Karena pesan itu datang dari nomor Anda sendiri,
+                    kepemilikannya terbukti tanpa perlu langkah lain.
+                  </p>
+                  {WA_PENGELOLA ? (
+                    <a className="tombol"
+                       href={`https://wa.me/${WA_PENGELOLA}?text=${encodeURIComponent(
+                         `SIGAP ${hasil.kode} - konfirmasi pendaftaran nomor saya`)}`}
+                       target="_blank" rel="noopener noreferrer">
+                      Kirim kode lewat WhatsApp
+                    </a>
+                  ) : (
+                    <p className="panel-ket" style={{ marginBottom: 0 }}>
+                      Nomor WhatsApp pengelola belum diatur. Sampaikan kode di atas kepada
+                      kader atau pengurus RT Anda.
+                    </p>
+                  )}
+                </article>
+
+                <article>
+                  <h3>Cara 2 &mdash; daftar ulang lewat Telegram</h3>
+                  <p>
+                    Di Telegram, Andalah yang memulai percakapan, sehingga nomor langsung aktif
+                    seketika tanpa menunggu siapa pun.
+                  </p>
+                  {BOT ? (
+                    <a className="tombol tombol-halus"
+                       href={`https://t.me/${BOT}?start=warga`}
+                       target="_blank" rel="noopener noreferrer">
+                      Buka bot Telegram
+                    </a>
+                  ) : (
+                    <p className="panel-ket" style={{ marginBottom: 0 }}>
+                      Tautan bot belum diatur pengelola.
+                    </p>
+                  )}
+                </article>
+
+                <article>
+                  <h3>Cara 3 &mdash; tunggu kunjungan kader</h3>
+                  <p>
+                    Kader siaga drainase berkunjung dua minggu sekali dan dapat mengaktifkan
+                    pendaftaran Anda di tempat. Cukup tunjukkan kode di atas.
+                  </p>
+                </article>
+              </div>
             </>
           )}
 

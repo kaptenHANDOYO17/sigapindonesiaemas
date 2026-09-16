@@ -145,7 +145,9 @@ firmware/              ESP32 untuk sensor debit dan pH
 database/schema.sql    5 tabel, RLS, Realtime, view
 database/migrasi_pendaftaran.sql     kolom untuk pendaftaran lewat situs
 database/migrasi_admin_laporan.sql   tabel pengelola dan laporan warga
-database/akun_pengelola.sql          pembuatan akun pengelola pertama
+database/migrasi_profil_konfirmasi.sql  foto profil dan kode konfirmasi
+database/akun_pengelola.sql             akun pengelola pertama
+database/data_contoh.sql                data peragaan seluruh tabel
 bot/                   bot Telegram
 .github/workflows/     otomasi 30 menit dan bulanan
 datasets/

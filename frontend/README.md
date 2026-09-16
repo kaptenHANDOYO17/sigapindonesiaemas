@@ -18,6 +18,7 @@ paket gratis.
 | `/masuk` | pengelola | Masuk dengan surel dan kata sandi |
 | `/admin` | pengelola | Ringkasan, laporan warga, pendaftaran, verifikasi |
 | `/simulasi` | pengelola | Menguji penilaian status dan jalur notifikasi |
+| `/profil` | pengelola | Ubah nama, jabatan, foto profil, dan kata sandi |
 | `/verifikasi` | pengelola | Pengisian hasil pemeriksaan lapangan |
 
 Lima alamat di bawah `/api` bekerja di sisi server dan tidak dibuka langsung
@@ -69,7 +70,9 @@ Jalankan empat berkas ini di Supabase, menu **SQL Editor**, berurutan:
 1. `database/schema.sql` — lima tabel pokok
 2. `database/migrasi_pendaftaran.sql` — kolom untuk pendaftaran lewat situs
 3. `database/migrasi_admin_laporan.sql` — tabel pengelola dan laporan warga
-4. `database/akun_pengelola.sql` — membuat akun pengelola pertama
+4. `database/migrasi_profil_konfirmasi.sql` — foto profil dan kode konfirmasi nomor
+5. `database/akun_pengelola.sql` — membuat akun pengelola pertama
+6. `database/data_contoh.sql` — mengisi seluruh tabel dengan data peragaan (opsional)
 
 Ketiga yang pertama aman dijalankan berulang kali. Berkas keempat memuat kata
 sandi awal; **ganti kata sandinya lebih dulu**, dan ganti lagi melalui menu

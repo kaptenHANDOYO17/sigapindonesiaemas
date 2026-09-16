@@ -327,3 +327,67 @@ main { max-width: var(--lebar); margin: 0 auto; padding: 22px 22px 60px; }
   padding: 7px 0; font-size: .86rem; border-bottom: 1px solid var(--tepi);
 }
 .daftar-pemicu li:last-child { border-bottom: none; }
+
+/* --------------------------- menu profil pengelola --------------------- */
+.menu-profil { position: relative; }
+.menu-profil-tombol {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--kartu); border: 1px solid var(--tepi); border-radius: 999px;
+  padding: 4px 12px 4px 4px; cursor: pointer; font-family: inherit;
+  font-size: .85rem; color: var(--tinta);
+}
+.menu-profil-tombol:hover { border-color: var(--biru); }
+.menu-profil-nama { font-weight: 600; }
+
+.menu-profil-isi {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 40;
+  min-width: 230px; background: #fff; border: 1px solid var(--tepi);
+  border-radius: var(--radius); box-shadow: 0 10px 30px rgba(16,36,46,.14);
+  padding: 6px; display: flex; flex-direction: column;
+}
+.menu-profil-kepala {
+  display: flex; gap: 11px; align-items: center;
+  padding: 10px 10px 12px; border-bottom: 1px solid var(--tepi); margin-bottom: 6px;
+}
+.menu-profil-kepala b { display: block; font-size: .88rem; }
+.menu-profil-kepala span {
+  display: block; font-size: .76rem; color: var(--redup); line-height: 1.5;
+}
+.menu-profil-isi a, .menu-profil-isi button {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  padding: 8px 10px; border-radius: 7px; font-family: inherit; font-size: .86rem;
+  color: var(--tinta) !important; cursor: pointer; text-decoration: none;
+}
+.menu-profil-isi a:hover, .menu-profil-isi button:hover { background: var(--kartu); }
+.menu-profil-isi button { color: var(--kritis) !important; font-weight: 600; }
+
+/* ------------------------------ halaman profil ------------------------- */
+.profil-foto {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+  padding: 18px; background: var(--kartu); border: 1px solid var(--tepi);
+  border-radius: var(--radius);
+}
+.profil-foto small {
+  display: block; font-size: .78rem; color: var(--redup);
+  line-height: 1.6; margin-top: 9px; max-width: 42ch;
+}
+
+/* ------------------------- kode konfirmasi warga ----------------------- */
+.kotak-kode {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap; margin: 18px 0 20px; padding: 16px 20px;
+  background: #eaf3f7; border: 1px solid #c3dde9; border-radius: var(--radius);
+}
+.kotak-kode span { font-size: .84rem; color: var(--redup); }
+.kotak-kode b {
+  font-family: "Space Grotesk", monospace; font-size: 1.7rem; font-weight: 700;
+  letter-spacing: .14em; color: var(--biru);
+}
+.pilihan-konfirmasi { display: grid; gap: 14px; }
+.pilihan-konfirmasi article {
+  border: 1px solid var(--tepi); border-radius: var(--radius); padding: 15px 17px;
+}
+.pilihan-konfirmasi h3 { margin: 0 0 7px; font-size: .92rem; }
+.pilihan-konfirmasi p {
+  margin: 0 0 12px; font-size: .86rem; color: var(--redup); line-height: 1.65;
+}

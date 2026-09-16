@@ -50,7 +50,7 @@ export default function Admin() {
         supabase.from("laporan_warga").select("*")
           .order("waktu", { ascending: false }).limit(200),
         supabase.from("kontak_stakeholder")
-          .select("id, nama, nomor_kontak, wilayah, tanggal_daftar, aktif, terkonfirmasi, sumber_daftar, peran")
+          .select("id, nama, nomor_kontak, wilayah, tanggal_daftar, aktif, terkonfirmasi, sumber_daftar, peran, kode_konfirmasi")
           .order("tanggal_daftar", { ascending: false }).limit(300),
         supabase.from("verifikasi_lapangan").select("*")
           .order("waktu_periksa", { ascending: false }).limit(50),
@@ -318,13 +318,15 @@ export default function Admin() {
             <div style={{ overflowX: "auto" }}>
               <table className="tabel">
                 <thead>
-                  <tr><th>Nama</th><th>Nomor</th><th>RT / RW</th><th>Didaftarkan</th><th>Tindakan</th></tr>
+                  <tr><th>Nama</th><th>Nomor</th><th>Kode</th><th>RT / RW</th><th>Didaftarkan</th><th>Tindakan</th></tr>
                 </thead>
                 <tbody>
                   {tertunda.map((k) => (
                     <tr key={k.id}>
                       <td>{k.nama || "—"}</td>
                       <td>{samarkanNomor(k.nomor_kontak)}</td>
+                      <td><code style={{ fontWeight: 700, letterSpacing: ".08em" }}>
+                        {k.kode_konfirmasi || "—"}</code></td>
                       <td>{k.wilayah || "—"}</td>
                       <td>{jam(k.tanggal_daftar)}</td>
                       <td style={{ whiteSpace: "nowrap" }}>
@@ -342,7 +344,13 @@ export default function Admin() {
           )}
 
           <div className="kabar kabar-info" style={{ marginTop: 20 }}>
-            Nomor sengaja ditampilkan sebagian saja. Bila Anda perlu melihat nomor lengkap untuk
+            <b>Cara memastikan nomor benar milik pendaftar.</b> Warga diminta mengirim kode di
+            kolom Kode dari WhatsApp mereka sendiri ke nomor pengelola. Begitu pesan berisi kode
+            itu masuk, cocokkan dengan baris di tabel ini lalu tekan Aktifkan. Karena pesan
+            datang dari nomor yang bersangkutan, kepemilikannya terbukti. Bila warga tidak
+            mengirim apa pun, pastikan langsung saat kunjungan kader.
+            <br /><br />
+            Nomor sengaja ditampilkan sebagian saja. Bila Anda perlu nomor lengkap untuk
             menghubungi warga, bukalah melalui Supabase, agar akses itu meninggalkan jejak yang
             dapat ditelusuri.
           </div>

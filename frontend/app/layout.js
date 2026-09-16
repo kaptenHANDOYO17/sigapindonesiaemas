@@ -1,4 +1,5 @@
 import "./globals.css";
+import MenuPengelola from "../components/MenuPengelola";
 
 const JUDUL = "SIGAP Drainase — Pemantauan Saluran Mangunharjo";
 const KETERANGAN =
@@ -48,7 +49,7 @@ export default function RootLayout({ children }) {
               <a href="/lapor">Lapor</a>
               <a href="/tentang">Tentang Sistem</a>
               <a href="/simulasi">Simulasi</a>
-              <a href="/masuk" className="tautan-pengelola">Masuk Pengelola</a>
+              <MenuPengelola />
             </nav>
           </div>
         </header>

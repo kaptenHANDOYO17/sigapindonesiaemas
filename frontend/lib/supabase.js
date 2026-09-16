@@ -72,7 +72,7 @@ export async function ambilProfil() {
   if (!session) return null;
   const { data, error } = await supabase
     .from("profil_admin")
-    .select("user_id, nama, peran, wilayah, aktif")
+    .select("user_id, nama, peran, wilayah, aktif, foto_url, jabatan, nomor_kontak")
     .eq("user_id", session.user.id)
     .maybeSingle();
   if (error || !data || !data.aktif) return null;
