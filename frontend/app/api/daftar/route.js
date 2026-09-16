@@ -79,7 +79,7 @@ export async function POST(req) {
   // formulir ini tidak bisa dipakai menebak nomor siapa saja yang terdaftar.
   const { data: adaSebelumnya } = await db
     .from("kontak_stakeholder")
-    .select("id, aktif, terkonfirmasi")
+    .select("id, aktif, terkonfirmasi, kode_konfirmasi")
     .eq("nomor_kontak", cek.nomor)
     .maybeSingle();
 
@@ -89,10 +89,9 @@ export async function POST(req) {
     });
     return NextResponse.json({
       ok: true,
-      status: adaSebelumnya.terkonfirmasi ? "sudah_aktif" : "menunggu",
-      pesan: adaSebelumnya.terkonfirmasi
-        ? "Nomor ini sudah terdaftar dan aktif menerima peringatan."
-        : "Nomor ini sudah terdaftar dan sedang menunggu konfirmasi kader.",
+      status: "terdaftar",
+      kode: adaSebelumnya.kode_konfirmasi,
+      pesan: "Nomor ini sudah pernah didaftarkan.",
     });
   }
 
@@ -106,9 +105,16 @@ export async function POST(req) {
     nomor_kontak: cek.nomor,
     wilayah: String(wilayah || "").trim().slice(0, 40) || null,
     peran: "warga",
-    kanal: "whatsapp",
-    aktif: false,
-    terkonfirmasi: false,
+    kanal: "telegram",
+    // Pendaftaran dari situs kini langsung aktif, sesuai permintaan pengelola.
+    //
+    // Yang perlu disadari: formulir ini terbuka, sehingga seseorang dapat
+    // mendaftarkan nomor orang lain. Penyeimbangnya ada dua. Pertama, pesan
+    // hanya benar-benar sampai setelah orangnya membuka bot Telegram sendiri,
+    // karena bot tidak dapat menghubungi siapa pun yang belum pernah memulai
+    // percakapan. Kedua, halaman /berhenti tersedia tanpa syarat apa pun.
+    aktif: true,
+    terkonfirmasi: true,
     sumber_daftar: "situs",
     token_berhenti: token,
     kode_konfirmasi: kode,
@@ -128,7 +134,7 @@ export async function POST(req) {
 
   return NextResponse.json({
     ok: true,
-    status: "menunggu",
+    status: "terdaftar",
     token,
     kode,
     pesan:

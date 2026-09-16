@@ -410,3 +410,36 @@ main { max-width: var(--lebar); margin: 0 auto; padding: 22px 22px 60px; }
   display: block; font-size: .78rem; color: var(--redup); line-height: 1.6;
   border-top: 1px solid var(--tepi); padding-top: 10px;
 }
+
+/* --------------------------- langkah akhir pendaftaran ----------------- */
+.langkah-akhir {
+  margin-top: 20px; padding: 18px 20px; border-radius: var(--radius);
+  background: #eaf3f7; border: 1px solid #c3dde9;
+}
+.langkah-akhir h3 { margin: 0 0 8px; font-size: 1rem; color: var(--biru); }
+.langkah-akhir p { margin: 0 0 14px; font-size: .88rem; line-height: 1.65; }
+.langkah-akhir small {
+  display: block; margin-top: 14px; font-size: .8rem; color: var(--redup);
+  line-height: 1.6;
+}
+
+/* ------------------------------ alat tabel admin ----------------------- */
+.alat-tabel {
+  display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  margin: 16px 0 14px;
+}
+.kotak-cari {
+  flex: 1 1 260px; min-width: 200px; padding: 8px 13px;
+  border: 1px solid var(--tepi); border-radius: 8px;
+  font-family: inherit; font-size: .88rem; background: #fff; color: var(--tinta);
+}
+.kotak-cari:focus { outline: none; border-color: var(--biru); }
+.baris-sunting td { background: #fff7e6; }
+.baris-sunting input, .baris-sunting select {
+  width: 100%; padding: 5px 8px; border: 1px solid var(--tepi);
+  border-radius: 6px; font-family: inherit; font-size: .82rem;
+}
+.tombol-hapus {
+  background: var(--kartu) !important; color: var(--kritis) !important;
+  border-color: var(--tepi) !important;
+}

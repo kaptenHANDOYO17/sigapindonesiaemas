@@ -32,6 +32,10 @@ export default function Admin() {
 
   const [laporan, setLaporan] = useState([]);
   const [tertunda, setTertunda] = useState([]);
+  const [semuaKontak, setSemuaKontak] = useState([]);
+  const [cari, setCari] = useState("");
+  const [saringKontak, setSaringKontak] = useState("semua");
+  const [sunting, setSunting] = useState(null);
   const [kontakAktif, setKontakAktif] = useState(0);
   const [verifikasi, setVerifikasi] = useState([]);
   const [statusTerkini, setStatusTerkini] = useState(null);
@@ -52,7 +56,7 @@ export default function Admin() {
         supabase.from("laporan_warga").select("*")
           .order("waktu", { ascending: false }).limit(200),
         supabase.from("kontak_stakeholder")
-          .select("id, nama, nomor_kontak, wilayah, tanggal_daftar, aktif, terkonfirmasi, sumber_daftar, peran, kode_konfirmasi")
+          .select("id, nama, nomor_kontak, chat_id, wilayah, tanggal_daftar, aktif, terkonfirmasi, sumber_daftar, peran, kode_konfirmasi")
           .order("tanggal_daftar", { ascending: false }).limit(300),
         supabase.from("verifikasi_lapangan").select("*")
           .order("waktu_periksa", { ascending: false }).limit(50),
@@ -60,6 +64,7 @@ export default function Admin() {
           .order("timestamp", { ascending: false }).limit(1),
       ]);
       setLaporan(l.data ?? []);
+      setSemuaKontak(k.data ?? []);
       setTertunda((k.data ?? []).filter((x) => !x.terkonfirmasi && x.peran === "warga"));
       setKontakAktif((k.data ?? []).filter((x) => x.aktif && x.terkonfirmasi).length);
       setVerifikasi(v.data ?? []);
@@ -127,6 +132,49 @@ export default function Admin() {
     } finally {
       setMeringkas(false);
     }
+  }
+
+  async function simpanKontak(baris) {
+    setSibuk(true);
+    const { error } = await supabase.from("kontak_stakeholder").update({
+      nama: baris.nama?.trim() || null,
+      nomor_kontak: baris.nomor_kontak?.trim() || null,
+      wilayah: baris.wilayah?.trim() || null,
+      peran: baris.peran,
+      aktif: baris.aktif,
+    }).eq("id", baris.id);
+    setKabar(error ? { jenis: "buruk", teks: error.message }
+                   : { jenis: "baik", teks: `Data ${baris.nama || baris.id} tersimpan.` });
+    if (!error) {
+      setSemuaKontak((s) => s.map((x) => (x.id === baris.id ? { ...x, ...baris } : x)));
+      setSunting(null);
+    }
+    setSibuk(false);
+  }
+
+  async function ubahAktif(baris) {
+    setSibuk(true);
+    const { error } = await supabase.from("kontak_stakeholder")
+      .update({ aktif: !baris.aktif }).eq("id", baris.id);
+    if (!error) {
+      setSemuaKontak((s) => s.map((x) => (x.id === baris.id ? { ...x, aktif: !x.aktif } : x)));
+      setKabar({ jenis: "baik",
+                 teks: baris.aktif ? "Dinonaktifkan." : "Diaktifkan kembali." });
+    } else setKabar({ jenis: "buruk", teks: error.message });
+    setSibuk(false);
+  }
+
+  async function hapusKontak(baris) {
+    if (!confirm(`Hapus ${baris.nama || "kontak"} dari daftar? Tindakan ini tidak dapat dibatalkan.`))
+      return;
+    setSibuk(true);
+    const { error } = await supabase.from("kontak_stakeholder").delete().eq("id", baris.id);
+    if (!error) {
+      setSemuaKontak((s) => s.filter((x) => x.id !== baris.id));
+      setTertunda((s) => s.filter((x) => x.id !== baris.id));
+      setKabar({ jenis: "baik", teks: "Kontak dihapus." });
+    } else setKabar({ jenis: "buruk", teks: error.message });
+    setSibuk(false);
   }
 
   /* ------------------------------------------------------------ tampilan */
@@ -353,54 +401,130 @@ export default function Admin() {
       {/* ---------------------------- PENDAFTARAN ---------------------------- */}
       {tab === "pendaftaran" && (
         <section className="panel">
-          <h2>Pendaftaran Nomor Menunggu Konfirmasi</h2>
+          <h2>Daftar Warga Terdaftar</h2>
           <p className="panel-ket">
-            Nomor di bawah ini didaftarkan melalui situs dan belum menerima peringatan apa pun.
-            Aktifkan hanya setelah Anda memastikan nomor tersebut benar milik yang bersangkutan,
-            misalnya saat kunjungan kader.
+            Seluruh nomor yang terdaftar menerima peringatan. Kolom Telegram menunjukkan apakah
+            orangnya sudah membuka bot; tanpa itu, pesan tidak akan sampai meskipun nomornya
+            sudah tercatat di sini.
           </p>
 
-          {tertunda.length === 0 ? (
-            <p className="panel-ket">Tidak ada pendaftaran yang menunggu.</p>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table className="tabel">
-                <thead>
-                  <tr><th>Nama</th><th>Nomor</th><th>Kode</th><th>RT / RW</th><th>Didaftarkan</th><th>Tindakan</th></tr>
-                </thead>
-                <tbody>
-                  {tertunda.map((k) => (
-                    <tr key={k.id}>
-                      <td>{k.nama || "—"}</td>
-                      <td>{samarkanNomor(k.nomor_kontak)}</td>
-                      <td><code style={{ fontWeight: 700, letterSpacing: ".08em" }}>
-                        {k.kode_konfirmasi || "—"}</code></td>
-                      <td>{k.wilayah || "—"}</td>
-                      <td>{jam(k.tanggal_daftar)}</td>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        <button className="tombol-kecil" disabled={sibuk}
-                                onClick={() => putuskanKontak(k.id, true)}>Aktifkan</button>
-                        <button className="tombol-kecil tombol-kecil-halus" disabled={sibuk}
-                                style={{ marginLeft: 8 }}
-                                onClick={() => putuskanKontak(k.id, false)}>Hapus</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="alat-tabel">
+            <input className="kotak-cari" value={cari} onChange={(e) => setCari(e.target.value)}
+                   placeholder="Cari nama, nomor, atau RT/RW…" />
+            <div className="saring-baris" style={{ margin: 0 }}>
+              {[["semua", "Semua"], ["aktif", "Aktif"], ["nonaktif", "Nonaktif"],
+                ["belum_telegram", "Belum ke Telegram"], ["petugas", "Petugas"]].map(([k, l]) => (
+                <button key={k} className={`saring ${saringKontak === k ? "saring-aktif" : ""}`}
+                        onClick={() => setSaringKontak(k)}>{l}</button>
+              ))}
             </div>
-          )}
+          </div>
+
+          {(() => {
+            const q = cari.trim().toLowerCase();
+            const hasil = semuaKontak.filter((k) => {
+              if (saringKontak === "aktif" && !k.aktif) return false;
+              if (saringKontak === "nonaktif" && k.aktif) return false;
+              if (saringKontak === "belum_telegram" && k.chat_id) return false;
+              if (saringKontak === "petugas" && k.peran === "warga") return false;
+              if (!q) return true;
+              return [k.nama, k.nomor_kontak, k.wilayah, k.kode_konfirmasi]
+                .some((x) => String(x || "").toLowerCase().includes(q));
+            });
+
+            if (!semuaKontak.length) {
+              return <p className="panel-ket">Belum ada yang terdaftar.</p>;
+            }
+
+            return (
+              <>
+                <p style={{ fontSize: ".82rem", color: "var(--redup)", margin: "0 0 10px" }}>
+                  Menampilkan {hasil.length} dari {semuaKontak.length} kontak.
+                </p>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="tabel">
+                    <thead>
+                      <tr>
+                        <th>Nama</th><th>Nomor</th><th>RT / RW</th><th>Peran</th>
+                        <th>Telegram</th><th>Status</th><th>Tindakan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {hasil.map((k) => sunting?.id === k.id ? (
+                        <tr key={k.id} className="baris-sunting">
+                          <td><input value={sunting.nama || ""}
+                                     onChange={(e) => setSunting({ ...sunting, nama: e.target.value })} /></td>
+                          <td><input value={sunting.nomor_kontak || ""}
+                                     onChange={(e) => setSunting({ ...sunting, nomor_kontak: e.target.value })} /></td>
+                          <td><input value={sunting.wilayah || ""}
+                                     onChange={(e) => setSunting({ ...sunting, wilayah: e.target.value })} /></td>
+                          <td>
+                            <select value={sunting.peran}
+                                    onChange={(e) => setSunting({ ...sunting, peran: e.target.value })}>
+                              <option value="warga">warga</option>
+                              <option value="bpbd">bpbd</option>
+                              <option value="kelurahan">kelurahan</option>
+                            </select>
+                          </td>
+                          <td>{k.chat_id ? "tersambung" : "belum"}</td>
+                          <td>
+                            <label style={{ fontSize: ".8rem", display: "flex", gap: 6 }}>
+                              <input type="checkbox" checked={sunting.aktif}
+                                     onChange={(e) => setSunting({ ...sunting, aktif: e.target.checked })} />
+                              aktif
+                            </label>
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <button className="tombol-kecil" disabled={sibuk}
+                                    onClick={() => simpanKontak(sunting)}>Simpan</button>
+                            <button className="tombol-kecil tombol-kecil-halus" style={{ marginLeft: 6 }}
+                                    onClick={() => setSunting(null)}>Batal</button>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={k.id}>
+                          <td>{k.nama || "—"}</td>
+                          <td>{samarkanNomor(k.nomor_kontak)}</td>
+                          <td>{k.wilayah || "—"}</td>
+                          <td>{k.peran}</td>
+                          <td>
+                            {k.chat_id
+                              ? <span className="pil" style={{ background: "#2fd08a" }}>ya</span>
+                              : <span className="pil" style={{ background: "#ff8a3d" }}>belum</span>}
+                          </td>
+                          <td>
+                            {k.aktif
+                              ? <span className="pil" style={{ background: "#1b7fa8" }}>aktif</span>
+                              : <span className="pil" style={{ background: "#9a9a9a" }}>nonaktif</span>}
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <button className="tombol-kecil tombol-kecil-halus" disabled={sibuk}
+                                    onClick={() => setSunting({ ...k })}>Ubah</button>
+                            <button className="tombol-kecil tombol-kecil-halus" style={{ marginLeft: 6 }}
+                                    disabled={sibuk} onClick={() => ubahAktif(k)}>
+                              {k.aktif ? "Nonaktifkan" : "Aktifkan"}
+                            </button>
+                            <button className="tombol-kecil tombol-hapus" style={{ marginLeft: 6 }}
+                                    disabled={sibuk} onClick={() => hapusKontak(k)}>Hapus</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })()}
 
           <div className="kabar kabar-info" style={{ marginTop: 20 }}>
-            <b>Cara memastikan nomor benar milik pendaftar.</b> Warga diminta mengirim kode di
-            kolom Kode dari WhatsApp mereka sendiri ke nomor pengelola. Begitu pesan berisi kode
-            itu masuk, cocokkan dengan baris di tabel ini lalu tekan Aktifkan. Karena pesan
-            datang dari nomor yang bersangkutan, kepemilikannya terbukti. Bila warga tidak
-            mengirim apa pun, pastikan langsung saat kunjungan kader.
+            Nomor ditampilkan sebagian saja. Bila Anda perlu nomor lengkap untuk menghubungi
+            warga, bukalah melalui Supabase, agar akses itu meninggalkan jejak yang dapat
+            ditelusuri.
             <br /><br />
-            Nomor sengaja ditampilkan sebagian saja. Bila Anda perlu nomor lengkap untuk
-            menghubungi warga, bukalah melalui Supabase, agar akses itu meninggalkan jejak yang
-            dapat ditelusuri.
+            Kolom <b>Telegram</b> bertanda <b>belum</b> berarti orang tersebut sudah mengisi
+            formulir tetapi belum membuka bot. Bot Telegram tidak dapat menghubungi siapa pun
+            hanya berbekal nomor telepon, sehingga peringatan belum akan sampai kepadanya.
+            Ingatkan lewat kunjungan kader atau telepon biasa.
           </div>
         </section>
       )}

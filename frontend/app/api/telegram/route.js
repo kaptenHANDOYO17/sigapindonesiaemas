@@ -83,9 +83,42 @@ const TINDAKAN = {
 /* ------------------------------------------------------------- perintah */
 
 async function cmdStart(db, chatId, nama, argumen) {
-  // Tautan untuk petugas berbeda dari tautan untuk warga, sehingga peran
-  // tersimpan benar tanpa perlu mengisi apa pun.
-  const peran = String(argumen || "").toLowerCase().startsWith("bpbd") ? "bpbd" : "warga";
+  const arg = String(argumen || "").trim();
+  const peran = arg.toLowerCase().startsWith("bpbd") ? "bpbd" : "warga";
+
+  // Bila argumennya berupa kode enam huruf, berarti orang ini datang dari
+  // tautan yang muncul setelah mengisi formulir di situs. Cocokkan kodenya,
+  // lalu tempelkan chat_id pada baris yang sudah ada.
+  //
+  // Langkah ini diperlukan karena bot Telegram TIDAK DAPAT menghubungi
+  // siapa pun hanya berbekal nomor telepon. Telegram baru mengizinkan bot
+  // mengirim pesan setelah orang yang bersangkutan memulai percakapan, dan
+  // yang dipakai untuk mengirim adalah chat_id, bukan nomor.
+  const kode = /^[A-Za-z0-9]{6}$/.test(arg) ? arg.toUpperCase() : null;
+  if (kode) {
+    const { data: cocok } = await db.from("kontak_stakeholder")
+      .select("id, nama, nomor_kontak")
+      .eq("kode_konfirmasi", kode)
+      .maybeSingle();
+
+    if (cocok) {
+      await db.from("kontak_stakeholder").update({
+        chat_id: String(chatId),
+        kanal: "telegram",
+        aktif: true,
+        terkonfirmasi: true,
+        dikonfirmasi_pada: new Date().toISOString(),
+        dikonfirmasi_oleh: "tautan pendaftaran situs",
+      }).eq("id", cocok.id);
+
+      return kirim(chatId,
+        `Halo <b>${cocok.nama || nama}</b>, pendaftaran Anda sudah lengkap.\n\n` +
+        "Nomor Anda kini tersambung dengan bot ini dan aktif menerima peringatan dini " +
+        "genangan di Kelurahan Mangunharjo.\n\n" +
+        "Ketik /bantuan untuk melihat apa saja yang bisa saya lakukan, atau tanyakan " +
+        "apa saja dengan bahasa biasa.");
+    }
+  }
 
   await db.from("kontak_stakeholder").upsert({
     chat_id: String(chatId),
@@ -251,7 +284,120 @@ async function cmdBantuan(chatId) {
     "/lapor \u2014 laporkan sampah atau genangan\n" +
     "/mitigasi \u2014 langkah pencegahan\n" +
     "/berhenti \u2014 berhenti menerima peringatan\n\n" +
+    "Anda juga bisa langsung mengetik pertanyaan dengan bahasa biasa, tanpa perintah. " +
+    "Contohnya: <i>saluran depan rumah saya gimana ya?</i>\n\n" +
     "Peringatan dikirim otomatis hanya saat status Waspada ke atas.");
+}
+
+
+/* ------------------------------------------------------------- obrolan */
+
+/**
+ * Menjawab pesan biasa dengan bahasa santai, memakai Grok.
+ *
+ * PAGAR PENGAMAN YANG DIPASANG DI SINI
+ * ------------------------------------
+ * Kondisi saluran terkini diambil lebih dulu dari basis data, lalu
+ * disisipkan ke dalam arahan. Model tidak diminta menebak apa pun; ia hanya
+ * boleh menyampaikan ulang angka yang sudah diberikan. Tanpa ini, model akan
+ * mengarang angka endapan ketika ditanya, dan warga akan memercayainya.
+ *
+ * Model juga dilarang memberi keputusan evakuasi. Untuk keadaan darurat, ia
+ * diarahkan menyebut nomor 112. Menyerahkan keputusan semacam itu kepada
+ * model bahasa bukanlah risiko yang pantas diambil demi bahasa yang lebih
+ * luwes.
+ *
+ * Bila XAI_API_KEY belum diisi, bot menjawab dengan petunjuk perintah biasa.
+ * Tidak ada bagian lain yang bergantung pada fitur ini.
+ */
+async function cmdObrol(db, chatId, nama, teks) {
+  if (!process.env.XAI_API_KEY) {
+    return kirim(chatId,
+      "Saya belum bisa mengobrol bebas. Yang bisa saya bantu sekarang:\n\n" +
+      "/status \u2014 kondisi saluran sekarang\n" +
+      "/prediksi \u2014 ramalan muka air 12 jam\n" +
+      "/lapor \u2014 laporkan sampah atau genangan\n" +
+      "/mitigasi \u2014 langkah pencegahan");
+  }
+
+  // Ambil kondisi sungguhan, agar model punya angka dan tidak perlu menebak.
+  const { data } = await db.from("status_ai")
+    .select("status, alasan, rasio_endapan, rasio_debit, estimasi_volume_m3, hujan_mm, timestamp")
+    .order("timestamp", { ascending: false }).limit(1);
+  const d = data?.[0];
+
+  const kondisi = d
+    ? `Status: ${d.status}\n` +
+      `Endapan: ${Math.round((d.rasio_endapan || 0) * 100)} persen kedalaman saluran\n` +
+      `Aliran: ${Math.round((d.rasio_debit || 0) * 100)} persen dari seharusnya\n` +
+      `Perkiraan material: ${d.estimasi_volume_m3 ?? "tidak diketahui"} meter kubik\n` +
+      `Curah hujan: ${d.hujan_mm ?? 0} mm per jam\n` +
+      `Alasan penilaian: ${d.alasan}\n` +
+      `Diperbarui: ${waktuLokal(d.timestamp)}`
+    : "Belum ada data penilaian tersimpan. Sensor kemungkinan belum terpasang.";
+
+  const ARAHAN =
+    `Anda adalah asisten SIGAP Drainase, sistem pemantauan saluran drainase di ` +
+    `Kelurahan Mangunharjo, Kecamatan Tugu, Kota Semarang. Anda sedang mengobrol ` +
+    `dengan warga bernama ${nama} lewat Telegram.\n\n` +
+    `GAYA BICARA\n` +
+    `Santai dan ramah, seperti tetangga yang paham soal saluran air. Pakai Bahasa ` +
+    `Indonesia sehari-hari. Hindari istilah teknis; bila terpaksa memakainya, ` +
+    `jelaskan sebentar. Jawaban pendek saja, paling banyak empat kalimat, kecuali ` +
+    `memang diminta rinci.\n\n` +
+    `KONDISI SALURAN SAAT INI (satu-satunya data yang boleh Anda pakai):\n${kondisi}\n\n` +
+    `ATURAN YANG TIDAK BOLEH DILANGGAR\n` +
+    `1. Jangan pernah mengarang angka. Bila ditanya hal yang tidak ada di data di ` +
+    `atas, katakan terus terang Anda tidak tahu.\n` +
+    `2. Jangan membuat ramalan sendiri. Bila ditanya soal beberapa jam ke depan, ` +
+    `sarankan mengetik /prediksi.\n` +
+    `3. Jangan memutuskan apakah warga harus mengungsi. Untuk keadaan darurat, ` +
+    `sebutkan nomor 112 dan arahkan mengikuti aparat setempat.\n` +
+    `4. Bila warga melaporkan sampah atau genangan, ajak mengetik /lapor diikuti ` +
+    `keterangannya, agar laporannya tercatat dan sampai ke petugas.\n` +
+    `5. Jangan menjanjikan kapan petugas datang.\n` +
+    `6. Bila ditanya di luar topik drainase, banjir, atau sistem ini, jawab ramah ` +
+    `seadanya lalu kembalikan ke topik.`;
+
+  try {
+    const r = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: process.env.XAI_MODEL || "grok-4.6",
+        temperature: 0.6,
+        max_tokens: 400,
+        messages: [
+          { role: "system", content: ARAHAN },
+          { role: "user", content: teks.slice(0, 900) },
+        ],
+      }),
+    });
+    const hasil = await r.json();
+
+    if (!r.ok) {
+      const sebab = hasil?.error?.message || hasil?.error || `HTTP ${r.status}`;
+      console.error("xai:", sebab);
+      return kirim(chatId,
+        "Maaf, saya sedang tidak bisa mengobrol. Tetapi perintah biasa tetap jalan:\n" +
+        "/status, /prediksi, /lapor, /mitigasi");
+    }
+
+    const jawab = hasil?.choices?.[0]?.message?.content?.trim();
+    if (!jawab) return kirim(chatId, "Maaf, saya belum menangkap maksudnya. Coba tanyakan lagi?");
+
+    // Lolos-kan tanda kurung siku agar Telegram tidak menolak seluruh pesan
+    // bila model kebetulan menuliskannya.
+    const aman = jawab.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return kirim(chatId, aman);
+  } catch (e) {
+    console.error("obrol:", e);
+    return kirim(chatId,
+      "Maaf, sambungan sedang terganggu. Coba /status untuk melihat kondisi saluran.");
+  }
 }
 
 /* -------------------------------------------------------------- webhook */
@@ -281,9 +427,7 @@ export async function POST(req) {
 
   try {
     if (!teks.startsWith("/")) {
-      await kirim(chatId,
-        "Ketik /bantuan untuk melihat daftar perintah, atau /lapor untuk melaporkan " +
-        "sampah dan genangan.");
+      await cmdObrol(db, chatId, nama, teks);
       return NextResponse.json({ ok: true });
     }
 
@@ -300,6 +444,7 @@ export async function POST(req) {
       case "lapor":    await cmdLapor(db, chatId, nama, argumen); break;
       case "berhenti":
       case "stop":     await cmdBerhenti(db, chatId); break;
+      case "tanya":    await cmdObrol(db, chatId, nama, argumen || "Halo"); break;
       case "bantuan":
       case "help":     await cmdBantuan(chatId); break;
       default:
@@ -315,9 +460,78 @@ export async function POST(req) {
   return NextResponse.json({ ok: true });
 }
 
+/**
+ * Halaman diagnosa.
+ *
+ * Buka https://ALAMAT-SITUS/api/telegram di peramban untuk memeriksa apakah
+ * server sudah punya semua yang dibutuhkan. Nilai aslinya tidak pernah
+ * ditampilkan, hanya ada atau tidaknya, sehingga aman dibuka siapa pun.
+ */
 export async function GET() {
+  const ada = (n) => Boolean(process.env[n]);
+  const periksa = {
+    TELEGRAM_BOT_TOKEN: ada("TELEGRAM_BOT_TOKEN"),
+    TELEGRAM_WEBHOOK_SECRET: ada("TELEGRAM_WEBHOOK_SECRET"),
+    TELEGRAM_ADMIN_CHAT_ID: ada("TELEGRAM_ADMIN_CHAT_ID"),
+    SUPABASE_URL: ada("NEXT_PUBLIC_SUPABASE_URL") || ada("SUPABASE_URL"),
+    SUPABASE_SERVICE_KEY: ada("SUPABASE_SERVICE_ROLE_KEY") || ada("SUPABASE_KEY"),
+    XAI_API_KEY: ada("XAI_API_KEY"),
+  };
+
+  const wajib = ["TELEGRAM_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_SERVICE_KEY"];
+  const kurang = wajib.filter((k) => !periksa[k]);
+
+  // Tanyakan langsung ke Telegram, karena di sanalah letak kesalahan yang
+  // paling sering: webhook belum terpasang, atau kata sandinya berbeda.
+  let webhook = null;
+  if (periksa.TELEGRAM_BOT_TOKEN) {
+    try {
+      const r = await fetch(
+        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getWebhookInfo`);
+      const d = await r.json();
+      webhook = {
+        terpasang_di: d?.result?.url || "(belum dipasang)",
+        memakai_kata_sandi: Boolean(d?.result?.has_custom_certificate) ||
+                            d?.result?.url?.length > 0,
+        pesan_menunggu: d?.result?.pending_update_count ?? 0,
+        galat_terakhir: d?.result?.last_error_message || "(tidak ada)",
+        waktu_galat: d?.result?.last_error_date
+          ? new Date(d.result.last_error_date * 1000).toISOString() : null,
+      };
+    } catch (e) {
+      webhook = { galat: "Tidak dapat menghubungi Telegram: " + e.message };
+    }
+  }
+
+  const saran = [];
+  if (kurang.length) {
+    saran.push(`Belum diisi di Vercel: ${kurang.join(", ")}. ` +
+               "Isi lalu Redeploy, karena nilai baru hanya terbaca pada penerbitan berikutnya.");
+  }
+  if (webhook?.terpasang_di === "(belum dipasang)") {
+    saran.push("Webhook belum dipasang. Buka tautan setWebhook di peramban.");
+  }
+  if (webhook?.galat_terakhir?.includes("401")) {
+    saran.push("Galat 401 berarti TELEGRAM_WEBHOOK_SECRET di Vercel berbeda dengan " +
+               "secret_token yang dipakai saat memasang webhook. Samakan keduanya, " +
+               "lalu pasang ulang webhook.");
+  }
+  if (webhook?.galat_terakhir?.includes("404")) {
+    saran.push("Galat 404 berarti alamat webhook salah. Pastikan berakhiran /api/telegram.");
+  }
+  if (!periksa.TELEGRAM_WEBHOOK_SECRET && webhook?.terpasang_di !== "(belum dipasang)") {
+    saran.push("TELEGRAM_WEBHOOK_SECRET kosong di Vercel. Bila saat memasang webhook Anda " +
+               "menyertakan secret_token, setiap pesan akan ditolak. Pasang ulang webhook " +
+               "TANPA secret_token, atau isi variabelnya di Vercel.");
+  }
+  if (!saran.length) saran.push("Semua sudah terisi. Bila bot masih diam, kirim /start lalu " +
+                                "muat ulang halaman ini untuk melihat galat terakhir.");
+
   return NextResponse.json({
-    ok: true,
-    keterangan: "Webhook bot Telegram SIGAP Drainase. Kirim pembaruan melalui POST.",
-  });
+    keterangan: "Diagnosa bot Telegram SIGAP Drainase",
+    siap: kurang.length === 0,
+    variabel: periksa,
+    webhook,
+    saran,
+  }, { headers: { "Cache-Control": "no-store" } });
 }

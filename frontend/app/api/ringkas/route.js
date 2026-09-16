@@ -116,7 +116,7 @@ export async function POST(req) {
         Authorization: `Bearer ${process.env.XAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: process.env.XAI_MODEL || "grok-3",
+        model: process.env.XAI_MODEL || "grok-4.6",
         temperature: 0.2,          // rendah, karena yang diminta ringkasan setia, bukan karangan
         max_tokens: 700,
         messages: [
@@ -150,7 +150,7 @@ export async function POST(req) {
       ok: true,
       ringkasan: teks,
       jumlah_laporan: laporan.length,
-      model: hasil?.model || process.env.XAI_MODEL || "grok-3",
+      model: hasil?.model || process.env.XAI_MODEL || "grok-4.6",
     });
   } catch (e) {
     return NextResponse.json({

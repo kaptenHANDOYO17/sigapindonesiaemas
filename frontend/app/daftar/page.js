@@ -40,82 +40,50 @@ export default function Daftar() {
   }
 
   if (hasil) {
+    const tautanBot = BOT && hasil.kode
+      ? `https://t.me/${BOT}?start=${hasil.kode}`
+      : BOT ? `https://t.me/${BOT}?start=warga` : null;
+
     return (
       <main>
         <section className="panel" style={{ maxWidth: 680, margin: "0 auto" }}>
           <h2>Pendaftaran tersimpan</h2>
-          <div className="kabar kabar-baik" style={{ marginTop: 12 }}>{hasil.pesan}</div>
+          <div className="kabar kabar-baik" style={{ marginTop: 12 }}>
+            Nama dan nomor Anda sudah tercatat. Tinggal satu langkah lagi.
+          </div>
 
-          {hasil.status === "menunggu" && (
-            <>
-              <p className="panel-ket" style={{ marginTop: 18 }}>
-                Siapa pun bisa mengetikkan nomor orang lain di formulir ini, karena itu nomor
-                Anda perlu dipastikan dulu benar milik Anda. Pilih cara yang paling mudah.
+          <div className="langkah-akhir">
+            <h3>Sambungkan dengan bot Telegram</h3>
+            <p>
+              Peringatan dikirim lewat Telegram. Bot tidak dapat menghubungi siapa pun
+              hanya berbekal nomor telepon; Telegram baru mengizinkannya setelah Anda
+              sendiri membuka percakapan. Jadi tekan tombol di bawah sekali saja, lalu
+              tekan <b>START</b> di Telegram.
+            </p>
+            {tautanBot ? (
+              <a className="tombol" href={tautanBot} target="_blank" rel="noopener noreferrer">
+                Buka bot Telegram sekarang
+              </a>
+            ) : (
+              <p className="panel-ket" style={{ marginBottom: 0 }}>
+                Tautan bot belum diatur pengelola. Hubungi kader di lingkungan Anda.
               </p>
-
-              {hasil.kode && (
-                <div className="kotak-kode">
-                  <span>Kode konfirmasi Anda</span>
-                  <b>{hasil.kode}</b>
-                </div>
-              )}
-
-              <div className="pilihan-konfirmasi">
-                <article>
-                  <h3>Cara 1 &mdash; kirim kode lewat WhatsApp</h3>
-                  <p>
-                    Tekan tombol di bawah. WhatsApp akan terbuka dengan pesan yang sudah terisi,
-                    Anda tinggal menekan kirim. Karena pesan itu datang dari nomor Anda sendiri,
-                    kepemilikannya terbukti tanpa perlu langkah lain.
-                  </p>
-                  {WA_PENGELOLA ? (
-                    <a className="tombol"
-                       href={`https://wa.me/${WA_PENGELOLA}?text=${encodeURIComponent(
-                         `SIGAP ${hasil.kode} - konfirmasi pendaftaran nomor saya`)}`}
-                       target="_blank" rel="noopener noreferrer">
-                      Kirim kode lewat WhatsApp
-                    </a>
-                  ) : (
-                    <p className="panel-ket" style={{ marginBottom: 0 }}>
-                      Nomor WhatsApp pengelola belum diatur. Sampaikan kode di atas kepada
-                      kader atau pengurus RT Anda.
-                    </p>
-                  )}
-                </article>
-
-                <article>
-                  <h3>Cara 2 &mdash; daftar ulang lewat Telegram</h3>
-                  <p>
-                    Di Telegram, Andalah yang memulai percakapan, sehingga nomor langsung aktif
-                    seketika tanpa menunggu siapa pun.
-                  </p>
-                  {BOT ? (
-                    <a className="tombol tombol-halus"
-                       href={`https://t.me/${BOT}?start=warga`}
-                       target="_blank" rel="noopener noreferrer">
-                      Buka bot Telegram
-                    </a>
-                  ) : (
-                    <p className="panel-ket" style={{ marginBottom: 0 }}>
-                      Tautan bot belum diatur pengelola.
-                    </p>
-                  )}
-                </article>
-
-                <article>
-                  <h3>Cara 3 &mdash; tunggu kunjungan kader</h3>
-                  <p>
-                    Kader siaga drainase berkunjung dua minggu sekali dan dapat mengaktifkan
-                    pendaftaran Anda di tempat. Cukup tunjukkan kode di atas.
-                  </p>
-                </article>
+            )}
+            {hasil.kode && (
+              <div className="kotak-kode" style={{ marginTop: 16 }}>
+                <span>Kode pendaftaran Anda</span>
+                <b>{hasil.kode}</b>
               </div>
-            </>
-          )}
+            )}
+            <small>
+              Tanpa langkah ini, nama Anda tetap tercatat di daftar warga, tetapi pesan
+              peringatan tidak akan sampai ke ponsel Anda.
+            </small>
+          </div>
 
           <p style={{ fontSize: ".84rem", color: "var(--redup)", marginTop: 22 }}>
             Anda dapat berhenti menerima peringatan kapan saja melalui halaman{" "}
-            <a href="/berhenti">berhenti berlangganan</a>.
+            <a href="/berhenti">berhenti berlangganan</a>, tanpa syarat apa pun.
           </p>
         </section>
       </main>
@@ -127,8 +95,9 @@ export default function Daftar() {
       <section className="panel" style={{ maxWidth: 680, margin: "0 auto" }}>
         <h2>Daftar Menerima Peringatan</h2>
         <p className="panel-ket">
-          Isi nomor Anda untuk menerima peringatan ketika saluran drainase di Mangunharjo mulai
-          tersumbat. Gratis, dan dapat dihentikan kapan saja.
+          Isi nama dan nomor Anda untuk menerima peringatan ketika saluran drainase di
+          Mangunharjo mulai tersumbat. Gratis, dan dapat dihentikan kapan saja. Setelah ini
+          Anda tinggal menekan satu tombol untuk menyambungkannya ke Telegram.
         </p>
 
         <div className="kabar kabar-info" style={{ marginBottom: 22 }}>
@@ -138,14 +107,14 @@ export default function Daftar() {
 
         <div className="formulir">
           <div className="baris">
-            <label htmlFor="nama">Nama *</label>
+            <label htmlFor="nama">Nama lengkap *</label>
             <input id="nama" value={isian.nama} onChange={ubah("nama")}
-                   placeholder="Nama panggilan pun cukup" />
+                   placeholder="Nama sesuai KTP" />
           </div>
 
           <div className="dua">
             <div className="baris">
-              <label htmlFor="nomor">Nomor WhatsApp *</label>
+              <label htmlFor="nomor">Nomor HP *</label>
               <small>Contoh: 0812xxxxxxx</small>
               <input id="nomor" inputMode="numeric" value={isian.nomor}
                      onChange={ubah("nomor")} placeholder="08.........." />
@@ -181,16 +150,14 @@ export default function Daftar() {
 
         <hr style={{ border: 0, borderTop: "1px solid var(--tepi)", margin: "26px 0 20px" }} />
 
-        <h2 style={{ fontSize: ".98rem" }}>Ingin langsung aktif?</h2>
+        <h2 style={{ fontSize: ".98rem" }}>Sudah punya Telegram?</h2>
         <p className="panel-ket">
-          Pendaftaran lewat formulir ini menunggu konfirmasi kader lebih dulu, karena siapa pun bisa
-          mengetikkan nomor orang lain di sini. Lewat Telegram, Andalah yang memulai percakapan,
-          sehingga nomor langsung aktif.
+          Anda boleh langsung membuka botnya tanpa mengisi formulir ini. Hasilnya sama.
         </p>
         {BOT ? (
           <a className="tombol tombol-halus" href={`https://t.me/${BOT}?start=warga`}
              target="_blank" rel="noopener noreferrer">
-            Daftar lewat Telegram
+            Langsung ke bot Telegram
           </a>
         ) : (
           <p className="panel-ket">Tautan bot Telegram belum diatur oleh pengelola.</p>
