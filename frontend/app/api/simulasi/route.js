@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { supabaseServer, serverSiap } from "../../../lib/supabaseServer";
+import { supabaseServer, serverSiap, alasanBelumSiap } from "../../../lib/supabaseServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,7 +124,10 @@ function susunPesanPetugas(h) {
 export async function POST(req) {
   if (!serverSiap || !process.env.TELEGRAM_BOT_TOKEN) {
     return NextResponse.json(
-      { ok: false, pesan: "Token bot Telegram atau kunci Supabase belum diatur di server." },
+      { ok: false, pesan: !process.env.TELEGRAM_BOT_TOKEN
+          ? "TELEGRAM_BOT_TOKEN belum diisi di Vercel. Isi pada Settings \u2192 " +
+            "Environment Variables, lalu terbitkan ulang situs."
+          : alasanBelumSiap() },
       { status: 503 });
   }
 

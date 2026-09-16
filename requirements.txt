@@ -1,12 +1,23 @@
+# ---------------------------------------------------------------------------
+#  VERSI DIKUNCI DAN HARUS SAMA DENGAN requirements-train.txt
+#
+#  Model scikit-learn disimpan dalam bentuk pickle, yang memuat jejak versi
+#  pustaka saat model dibuat. Bila versi saat melatih berbeda dengan versi
+#  saat menjalankan, model gagal dibaca. Gejalanya berupa pesan seperti
+#  "is not a known BitGenerator module" atau InconsistentVersionWarning.
+#
+#  Karena itu, setiap kali Anda mengubah versi di sini, ubah juga di
+#  requirements-train.txt, lalu latih ulang modelnya dan unggah hasilnya.
+# ---------------------------------------------------------------------------
 # Untuk MENJALANKAN sistem (inferensi di GitHub Actions).
 # tensorflow-cpu dipakai HANYA untuk MENJALANKAN model yang sudah jadi
 # (inferensi) di GitHub Actions. PELATIHAN tidak dilakukan di sini; latihlah
 # di komputer sendiri memakai GPU dengan requirements-train.txt. Runner GitHub
 # ukurannya jauh lebih kecil daripada tensorflow penuh.
 tensorflow-cpu==2.17.1
-numpy==1.26.4
+numpy==1.26.4          # jangan naikkan sendiri, lihat catatan di atas
 pandas==2.2.3
-scikit-learn==1.7.0  # >=1.7 diperlukan untuk class_weight pada HistGradientBoosting
+scikit-learn==1.7.0   # samakan dengan berkas requirements lainnya  # >=1.7 diperlukan untuk class_weight pada HistGradientBoosting
 joblib==1.4.2
 requests==2.32.3
 python-dotenv==1.0.1

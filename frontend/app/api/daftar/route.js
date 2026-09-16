@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { periksaNomor } from "../../../lib/nomor";
-import { supabaseServer, serverSiap, sidikNomor, buatToken } from "../../../lib/supabaseServer";
+import { supabaseServer, serverSiap, alasanBelumSiap, sidikNomor, buatToken } from "../../../lib/supabaseServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ function lewatBatas(kunci) {
 export async function POST(req) {
   if (!serverSiap) {
     return NextResponse.json(
-      { ok: false, pesan: "Server belum dikonfigurasi. Hubungi pengelola sistem." },
+      { ok: false, pesan: alasanBelumSiap() },
       { status: 503 }
     );
   }

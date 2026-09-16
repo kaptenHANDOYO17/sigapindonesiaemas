@@ -36,6 +36,8 @@ export default function Admin() {
   const [verifikasi, setVerifikasi] = useState([]);
   const [statusTerkini, setStatusTerkini] = useState(null);
   const [saringLaporan, setSaringLaporan] = useState("baru");
+  const [ringkasan, setRingkasan] = useState(null);
+  const [meringkas, setMeringkas] = useState(false);
 
   useEffect(() => {
     if (belumDikonfigurasi) { setMemeriksa(false); return; }
@@ -105,6 +107,26 @@ export default function Admin() {
       if (aktifkan) setKontakAktif((n) => n + 1);
     }
     setSibuk(false);
+  }
+
+  async function mintaRingkasan() {
+    setMeringkas(true);
+    setRingkasan(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch("/api/ringkas", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const d = await r.json();
+      setRingkasan(d.ok
+        ? { teks: d.ringkasan, jumlah: d.jumlah_laporan, model: d.model }
+        : { galat: d.pesan });
+    } catch {
+      setRingkasan({ galat: "Tidak dapat menghubungi server." });
+    } finally {
+      setMeringkas(false);
+    }
   }
 
   /* ------------------------------------------------------------ tampilan */
@@ -246,6 +268,32 @@ export default function Admin() {
             Laporan dari situs dan bot Telegram. Sensor hanya memantau satu titik, sehingga
             laporan warga kerap menemukan sumbatan yang tidak terlihat alat.
           </p>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "14px 0 4px" }}>
+            <button className="tombol tombol-halus" onClick={mintaRingkasan} disabled={meringkas}>
+              {meringkas ? "Meringkas\u2026" : "Ringkas laporan dengan AI"}
+            </button>
+          </div>
+
+          {ringkasan && (
+            <div className={ringkasan.galat ? "kabar kabar-buruk" : "kotak-ringkasan"}
+                 style={{ marginTop: 12 }}>
+              {ringkasan.galat ? ringkasan.galat : (
+                <>
+                  <div className="kotak-ringkasan-kepala">
+                    Ringkasan {ringkasan.jumlah} laporan terbaru
+                    <span>dibuat oleh {ringkasan.model}</span>
+                  </div>
+                  <pre>{ringkasan.teks}</pre>
+                  <small>
+                    Ringkasan ini dibuat model bahasa dan dapat keliru. Ia tidak menilai tingkat
+                    bahaya saluran, dan tidak menggantikan pembacaan laporan aslinya. Penilaian
+                    status tetap dikerjakan matriks aturan memakai data sensor.
+                  </small>
+                </>
+              )}
+            </div>
+          )}
 
           <div className="saring-baris">
             {[["baru", "Baru"], ["diproses", "Ditangani"], ["selesai", "Selesai"],

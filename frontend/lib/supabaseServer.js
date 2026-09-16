@@ -11,17 +11,28 @@ import { createClient } from "@supabase/supabase-js";
  *
  * Berkas ini hanya boleh diimpor dari Route Handler atau Server Component.
  */
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const kunci = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Nama SUPABASE_SERVICE_ROLE_KEY adalah yang utama. Namun banyak pemasangan
+// terlanjur memakai nama SUPABASE_KEY, karena itulah nama yang dipakai alur
+// Python di GitHub Actions. Keduanya diterima agar tidak perlu mengisi nilai
+// yang sama dua kali dengan nama berbeda.
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const kunci = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
 export const serverSiap = Boolean(url && kunci);
 
+/** Keterangan tepat mengenai apa yang belum diisi, agar tidak menebak-nebak. */
+export function alasanBelumSiap() {
+  const kurang = [];
+  if (!url) kurang.push("NEXT_PUBLIC_SUPABASE_URL (atau SUPABASE_URL)");
+  if (!kunci) kurang.push("SUPABASE_SERVICE_ROLE_KEY (atau SUPABASE_KEY)");
+  if (!kurang.length) return null;
+  return "Belum diisi di Vercel: " + kurang.join(" dan ") +
+         ". Isi pada Settings \u2192 Environment Variables, lalu terbitkan ulang situs.";
+}
+
 export function supabaseServer() {
   if (!serverSiap) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY atau NEXT_PUBLIC_SUPABASE_URL belum diisi. " +
-      "Isi di Vercel pada Settings \u2192 Environment Variables."
-    );
+    throw new Error(alasanBelumSiap());
   }
   return createClient(url, kunci, {
     auth: { persistSession: false, autoRefreshToken: false },

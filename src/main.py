@@ -75,15 +75,36 @@ def jalankan(tanpa_vega: bool = False, paksa_kirim: bool = False) -> dict:
     log.info("Siklus SIGAP Drainase — %s (%s)", s.nama, s.id)
 
     # --- 1-3. Data ---------------------------------------------------------
-    if not tanpa_vega:
+    # Penarikan dari VEGA Inventory System hanya berlaku bila sensornya
+    # VEGAPULS Air 23, yang mengirim datanya sendiri lewat jaringan seluler.
+    # Pada rancangan sekarang, radar Holykell HR2000 dibaca langsung oleh
+    # ESP32 dan ikut terkirim bersama debit serta pH, sehingga langkah ini
+    # tidak diperlukan dan dilewati dengan sendirinya.
+    if not tanpa_vega and settings.vega_token and settings.vega_device_id:
         log.info("Pembacaan radar baru tersimpan: %d", tarik_dan_simpan())
 
     df = sb.ambil_sensor(menit=max(settings.menit_riwayat, 4320))
     if df.empty:
-        raise RuntimeError(
-            "Tidak ada data sensor di Supabase. Periksa apakah VEGA sudah "
-            "terhubung dan ESP32 sudah mengirim data debit serta pH."
-        )
+        # Tabel sensor kosong. Ini BUKAN kerusakan bila perangkat memang belum
+        # terpasang, dan itulah keadaan yang wajar pada tahap persiapan.
+        #
+        # Sebelumnya kondisi ini melempar galat, sehingga alur GitHub Actions
+        # berwarna merah setiap tiga puluh menit. Peringatan yang berbunyi
+        # terus-menerus untuk keadaan yang normal akan membuat orang berhenti
+        # membacanya, dan kerusakan sungguhan justru terlewat.
+        log.warning("=" * 64)
+        log.warning("Tabel sensor_drainase masih kosong, jadi tidak ada yang dinilai.")
+        log.warning("Ini wajar bila perangkat memang belum terpasang di lapangan.")
+        log.warning("")
+        log.warning("Bila Anda ingin mengisi tabel dengan data peragaan agar dasbor")
+        log.warning("tidak kosong, jalankan database/data_contoh.sql di Supabase.")
+        log.warning("")
+        log.warning("Bila ESP32 sudah dipasang tetapi datanya belum masuk, periksa:")
+        log.warning("  1. Serial Monitor pada Arduino IDE, apakah tertulis 'Terkirim'")
+        log.warning("  2. Nilai SUPABASE_URL dan SUPABASE_KEY di dalam firmware")
+        log.warning("  3. Sambungan WiFi di lokasi pemasangan")
+        log.warning("=" * 64)
+        return {"status": "MENUNGGU_DATA", "alasan": "Belum ada pembacaan sensor."}
     log.info("Riwayat sensor: %d baris, terbaru %s", len(df), df["timestamp"].iloc[-1])
     umur = (datetime.now(timezone.utc)
             - pd.to_datetime(df["timestamp"].iloc[-1], utc=True).to_pydatetime())
@@ -94,7 +115,8 @@ def jalankan(tanpa_vega: bool = False, paksa_kirim: bool = False) -> dict:
                     "tetapi ramalan tidak akan menyebut jam puncak.", umur_jam)
         agent.lapor_admin(
             f"\u26a0\ufe0f <b>Data sensor SIGAP Drainase basi</b>\n"
-            f"Pembacaan terakhir {umur_jam:.1f} jam yang lalu. Periksa perangkat di lapangan.")
+            f"Pembacaan terakhir {umur_jam:.1f} jam yang lalu. Periksa perangkat di lapangan.",
+            sudah_html=True)
 
     hujan = vega.ambil_hujan()
     hujan_kini = vega.hujan_saat_ini(hujan)
@@ -247,9 +269,9 @@ def main() -> int:
         log.error("SIKLUS GAGAL: %s", e)
         log.debug(traceback.format_exc())
         agent.lapor_admin(
-            f"⚠️ <b>SIGAP Drainase gagal berjalan</b>\n"
-            f"<code>{type(e).__name__}: {e}</code>"
-        )
+            f"\u26a0\ufe0f <b>SIGAP Drainase gagal berjalan</b>\n"
+            f"<code>{agent._aman_html(f'{type(e).__name__}: {e}')}</code>",
+            sudah_html=True)
         return 1
 
 

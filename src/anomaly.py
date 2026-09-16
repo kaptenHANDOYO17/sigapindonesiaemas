@@ -5,6 +5,17 @@ import json
 import logging
 
 import joblib
+# Pesan yang dipakai ketika berkas model ada tetapi tidak dapat dibaca.
+# Penyebab paling sering adalah beda versi pustaka: model dilatih memakai
+# scikit-learn atau numpy versi tertentu, lalu dijalankan memakai versi lain.
+# Ciri khasnya adalah kalimat "is not a known BitGenerator module".
+_SARAN_VERSI = (
+    "Model ada tetapi tidak dapat dibaca. Penyebab paling sering adalah beda "
+    "versi pustaka antara komputer tempat melatih dan tempat menjalankan. "
+    "Pastikan versi pada requirements.txt dan requirements-train.txt sama "
+    "persis, lalu latih ulang modelnya dan unggah hasilnya ke repositori."
+)
+
 import numpy as np
 import pandas as pd
 
@@ -22,17 +33,32 @@ def tersedia() -> bool:
     return settings.model.anomali.exists() and settings.model.anomali_scaler.exists()
 
 
+_gagal_muat = False
+
+
+def _gagal_muat_anomali(e: Exception) -> None:
+    global _gagal_muat
+    _gagal_muat = True
+    log.error("Model anomali gagal dimuat: %s", e)
+    log.error(_SARAN_VERSI)
+    log.warning("Pendeteksi sensor bermasalah dilewati. Penilaian tetap berjalan.")
+
+
 def _muat() -> None:
     global _model, _scaler, _meta
-    if _model is not None:
+    if _model is not None or _gagal_muat:
         return
     if not tersedia():
         raise FileNotFoundError(
             f"Model anomali belum ada di {settings.model.anomali}. "
             "Latih dulu: python -m training.train_anomaly"
         )
-    _model = joblib.load(settings.model.anomali)
-    _scaler = joblib.load(settings.model.anomali_scaler)
+    try:
+        _model = joblib.load(settings.model.anomali)
+        _scaler = joblib.load(settings.model.anomali_scaler)
+    except Exception as e:
+        _gagal_muat_anomali(e)
+        return
     if settings.model.anomali_meta.exists():
         _meta = json.loads(settings.model.anomali_meta.read_text(encoding="utf-8"))
     log.info("Model anomali dimuat (dilatih %s).", _meta.get("dilatih_pada", "?"))

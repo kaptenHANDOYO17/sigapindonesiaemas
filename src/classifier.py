@@ -38,16 +38,42 @@ def tersedia() -> bool:
     return JALUR.exists()
 
 
+
+# Pesan yang dipakai ketika berkas model ada tetapi tidak dapat dibaca.
+# Penyebab paling sering adalah beda versi pustaka: model dilatih memakai
+# scikit-learn atau numpy versi tertentu, lalu dijalankan memakai versi lain.
+# Ciri khasnya adalah kalimat "is not a known BitGenerator module".
+_SARAN_VERSI = (
+    "Model ada tetapi tidak dapat dibaca. Penyebab paling sering adalah beda "
+    "versi pustaka antara komputer tempat melatih dan tempat menjalankan. "
+    "Pastikan versi pada requirements.txt dan requirements-train.txt sama "
+    "persis, lalu latih ulang modelnya dan unggah hasilnya ke repositori."
+)
+
+_gagal_muat = False
+
+
 def _muat() -> None:
-    global _model, _meta
-    if _model is not None:
+    global _model, _meta, _gagal_muat
+    if _model is not None or _gagal_muat:
         return
     if not tersedia():
         raise FileNotFoundError(
             f"Model klasifikasi belum ada di {JALUR}. "
             "Latih dulu: python -m training.train_classifier --sumber sintetis"
         )
-    _model = joblib.load(JALUR)
+    try:
+        _model = joblib.load(JALUR)
+    except Exception as e:
+        # Sengaja tidak melempar galat. Penilaian status tetap dapat berjalan
+        # memakai matriks aturan saja, hanya tanpa pendapat kedua dari model.
+        # Menghentikan seluruh siklus karena satu model gagal dibaca berarti
+        # warga tidak menerima peringatan apa pun, dan itu jauh lebih merugikan.
+        _gagal_muat = True
+        log.error("Model klasifikasi gagal dimuat: %s", e)
+        log.error(_SARAN_VERSI)
+        log.warning("Penilaian dilanjutkan dengan matriks aturan saja.")
+        return
     if META.exists():
         _meta = json.loads(META.read_text(encoding="utf-8"))
     log.info("Model klasifikasi dimuat (sumber %s, dilatih %s).",

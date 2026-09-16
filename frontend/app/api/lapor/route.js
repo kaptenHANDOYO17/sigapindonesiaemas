@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseServer, serverSiap } from "../../../lib/supabaseServer";
+import { supabaseServer, serverSiap, alasanBelumSiap } from "../../../lib/supabaseServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ const JENIS = ["sampah", "genangan", "sumbatan", "perangkat", "lainnya"];
 export async function POST(req) {
   if (!serverSiap) {
     return NextResponse.json(
-      { ok: false, pesan: "Server belum dikonfigurasi. Hubungi pengelola sistem." },
+      { ok: false, pesan: alasanBelumSiap() },
       { status: 503 });
   }
 

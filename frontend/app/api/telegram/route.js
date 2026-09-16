@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseServer, serverSiap } from "../../../lib/supabaseServer";
+import { supabaseServer, serverSiap, alasanBelumSiap } from "../../../lib/supabaseServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

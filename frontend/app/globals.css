@@ -391,3 +391,22 @@ main { max-width: var(--lebar); margin: 0 auto; padding: 22px 22px 60px; }
 .pilihan-konfirmasi p {
   margin: 0 0 12px; font-size: .86rem; color: var(--redup); line-height: 1.65;
 }
+
+/* --------------------------- ringkasan laporan AI ---------------------- */
+.kotak-ringkasan {
+  border: 1px solid var(--tepi); border-left: 4px solid var(--biru);
+  border-radius: var(--radius); background: var(--kartu); padding: 15px 18px;
+}
+.kotak-ringkasan-kepala {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  flex-wrap: wrap; font-weight: 600; font-size: .88rem; margin-bottom: 10px;
+}
+.kotak-ringkasan-kepala span { font-weight: 400; font-size: .76rem; color: var(--redup); }
+.kotak-ringkasan pre {
+  margin: 0 0 12px; white-space: pre-wrap; font-family: inherit;
+  font-size: .89rem; line-height: 1.7; color: var(--tinta);
+}
+.kotak-ringkasan small {
+  display: block; font-size: .78rem; color: var(--redup); line-height: 1.6;
+  border-top: 1px solid var(--tepi); padding-top: 10px;
+}

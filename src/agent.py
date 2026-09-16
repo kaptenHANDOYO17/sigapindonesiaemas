@@ -367,6 +367,29 @@ def siarkan(hasil: dict[str, Any]) -> dict[str, Any]:
     return laporan
 
 
-def lapor_admin(teks: str) -> None:
-    if settings.telegram_admin:
-        kirim_telegram(settings.telegram_admin, teks)
+def _aman_html(teks: str) -> str:
+    """
+    Lolos-kan tanda kurung siku agar Telegram tidak salah membacanya sebagai tag.
+
+    Pesan galat sering memuat potongan seperti <class 'numpy.random...'>.
+    Telegram menolak seluruh pesan dengan galat 400 bila menemukan tag yang
+    tidak dikenalnya, sehingga laporan kerusakan justru tidak pernah sampai.
+    Itu kejadian nyata: sistem gagal, lalu kabar kegagalannya ikut gagal
+    terkirim.
+    """
+    return (teks.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;"))
+
+
+def lapor_admin(teks: str, sudah_html: bool = False) -> None:
+    """
+    Kirim kabar kepada pengelola.
+
+    Setel sudah_html=True hanya bila teksnya memang sudah Anda susun dengan
+    tag HTML yang benar. Untuk pesan galat mentah, biarkan apa adanya supaya
+    dilolos-kan lebih dulu.
+    """
+    if not settings.telegram_admin:
+        return
+    kirim_telegram(settings.telegram_admin, teks if sudah_html else _aman_html(teks))

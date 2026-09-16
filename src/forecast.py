@@ -16,16 +16,40 @@ log = logging.getLogger("ramalan")
 
 _model = None
 _scaler = None
+
+
+class _Penskala:
+    """
+    Penskala sederhana pengganti StandardScaler dari scikit-learn.
+
+    Perhitungannya sama persis, yaitu (nilai - rerata) / sebaran, tetapi
+    nilainya dibaca dari berkas JSON biasa, bukan dari pickle. Dengan begitu
+    model ramalan tidak lagi gagal dibaca hanya karena versi scikit-learn di
+    komputer pelatih berbeda dengan versi di tempat menjalankan.
+    """
+
+    def __init__(self, mean, scale):
+        import numpy as np
+        self.mean_ = np.asarray(mean, dtype="float64")
+        self.scale_ = np.asarray(scale, dtype="float64")
+
+    def transform(self, x):
+        return (x - self.mean_) / self.scale_
 _meta: dict = {}
 
 
 def tersedia() -> bool:
-    return settings.model.ramalan.exists() and settings.model.ramalan_scaler.exists()
+    return settings.model.ramalan.exists() and (
+        settings.model.ramalan_scaler.with_suffix(".json").exists()
+        or settings.model.ramalan_scaler.exists())
+
+
+_gagal_muat = False
 
 
 def _muat() -> None:
-    global _model, _scaler, _meta
-    if _model is not None:
+    global _model, _scaler, _meta, _gagal_muat
+    if _model is not None or _gagal_muat:
         return
     if not tersedia():
         raise FileNotFoundError(
@@ -34,8 +58,26 @@ def _muat() -> None:
         )
     import tensorflow as tf
 
-    _model = tf.keras.models.load_model(settings.model.ramalan, compile=False)
-    _scaler = joblib.load(settings.model.ramalan_scaler)
+    try:
+        _model = tf.keras.models.load_model(settings.model.ramalan, compile=False)
+        # Utamakan berkas JSON, karena tidak bergantung pada versi pustaka.
+        # Berkas .joblib lama tetap diterima agar pemasangan yang sudah ada
+        # tidak langsung rusak setelah pembaruan ini.
+        jalur_json = settings.model.ramalan_scaler.with_suffix(".json")
+        if jalur_json.exists():
+            isi = json.loads(jalur_json.read_text(encoding="utf-8"))
+            _scaler = _Penskala(isi["mean"], isi["scale"])
+        else:
+            _scaler = joblib.load(settings.model.ramalan_scaler)
+    except Exception as e:
+        _gagal_muat = True
+        log.error("Model ramalan gagal dimuat: %s", e)
+        log.error("Model ada tetapi tidak dapat dibaca. Penyebab paling sering adalah "
+                  "beda versi pustaka antara komputer tempat melatih dan tempat "
+                  "menjalankan. Samakan versi pada requirements.txt dan "
+                  "requirements-train.txt, lalu latih ulang.")
+        log.warning("Ramalan muka air dilewati. Penilaian status tetap berjalan.")
+        return
     if settings.model.ramalan_meta.exists():
         _meta = json.loads(settings.model.ramalan_meta.read_text(encoding="utf-8"))
     log.info("Model ramalan dimuat (dilatih %s).", _meta.get("dilatih_pada", "?"))
