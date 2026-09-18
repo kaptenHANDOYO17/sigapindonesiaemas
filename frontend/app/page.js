@@ -10,7 +10,6 @@ import {
   KETERANGAN, STATUS, belumDikonfigurasi, jam, keArray, keObjek, selisih, supabase,
 } from "../lib/supabase";
 import { riwayatContoh, sensorContoh, statusContoh } from "../lib/contoh";
-import { useSetelan } from "../components/Setelan";
 
 const TINDAKAN = {
   AMAN: [],
@@ -33,7 +32,6 @@ const TINDAKAN = {
 };
 
 export default function Dasbor() {
-  const { t } = useSetelan();
   const [status, setStatus] = useState(null);
   const [sensor, setSensor] = useState([]);
   const [riwayat, setRiwayat] = useState([]);
@@ -137,8 +135,8 @@ export default function Dasbor() {
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
         <span className="denyut" data-hidup={hidup ? "true" : "false"}
               style={{ fontSize: ".82rem", color: "var(--redup)" }}>
-          <i />{hidup ? t("ket.langsung") : memuat ? t("ket.memuat")
-                 : peragaan ? t("ket.contoh") : t("ket.terputus")}
+          <i />{hidup ? "data langsung" : memuat ? "memuat"
+                 : peragaan ? "data contoh" : "terputus"}
         </span>
       </div>
 
@@ -216,15 +214,19 @@ export default function Dasbor() {
           tanpa harus membaca seluruh halaman lebih dulu. */}
       <section className="jalan-pintas">
         {[
-          ["/daftar", "1", "pintas.daftar", "pintas.daftarKet"],
-          ["/lapor", "2", "pintas.lapor", "pintas.laporKet"],
-          ["/peta", "3", "pintas.peta", "pintas.petaKet"],
-          ["/tentang", "4", "pintas.tentang", "pintas.tentangKet"],
+          ["/daftar", "1", "Daftar peringatan",
+           "Dapatkan pesan di ponsel sebelum genangan terjadi. Gratis."],
+          ["/lapor", "2", "Laporkan yang Anda lihat",
+           "Sampah atau genangan yang tidak terlihat alat. Boleh anonim."],
+          ["/peta", "3", "Lihat peta titik pantau",
+           "Letak setiap alat dan kondisi salurannya."],
+          ["/tentang", "4", "Pahami cara kerjanya",
+           "Cara kerja, hasil pengujian, dan keterbatasannya."],
         ].map(([alamat, no, judul, ket]) => (
           <a key={alamat} href={alamat} className="pintas">
             <span className="pintas-ikon">{no}</span>
-            <b>{t(judul)}</b>
-            <small>{t(ket)}</small>
+            <b>{judul}</b>
+            <small>{ket}</small>
           </a>
         ))}
       </section>
@@ -341,17 +343,23 @@ export default function Dasbor() {
 
       {/* ------------------------ Cara kerja --------------------------- */}
       <section className="panel">
-        <h2>{t("beranda.keadaan")}</h2>
-        <p className="panel-ket">{t("beranda.keadaanKet")}</p>
+        <h2>Empat keadaan yang perlu Anda kenali</h2>
+        <p className="panel-ket">
+          Sistem hanya menghubungi Anda ketika keadaan naik ke Waspada, Siaga, atau Kritis.
+          Saat aman, tidak ada pesan yang dikirim sama sekali.
+        </p>
         <div className="tangga-status">
-          {["AMAN", "WASPADA", "SIAGA", "KRITIS"].map((nama) => (
+          {[
+            ["AMAN", "Saluran bersih, air mengalir lancar.", "Tidak perlu tindakan apa pun."],
+            ["WASPADA", "Ada endapan, aliran masih lancar.", "Jangan buang sampah ke saluran."],
+            ["SIAGA", "Endapan banyak, aliran melambat.", "Naikkan barang, siapkan tas darurat."],
+            ["KRITIS", "Tersumbat parah, air hampir tidak mengalir.", "Utamakan keselamatan, matikan MCB."],
+          ].map(([nama, arti, tindak]) => (
             <div key={nama} className={`tangga ${st === nama ? "tangga-kini" : ""}`}>
-              <span className="pil" style={{ background: STATUS[nama]?.warna }}>
-                {t(`status.${nama}`)}
-              </span>
-              <b>{t(`arti.${nama}`)}</b>
-              <small>{t(`tindak.${nama}`)}</small>
-              {st === nama && <em>{t("beranda.sekarang")}</em>}
+              <span className="pil" style={{ background: STATUS[nama]?.warna }}>{nama}</span>
+              <b>{arti}</b>
+              <small>{tindak}</small>
+              {st === nama && <em>keadaan sekarang</em>}
             </div>
           ))}
         </div>

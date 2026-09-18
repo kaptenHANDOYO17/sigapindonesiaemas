@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer, serverSiap, alasanBelumSiap } from "../../../lib/supabaseServer";
+import { obrol, kunciGroq } from "../../../lib/groq";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -401,32 +402,56 @@ async function cmdDashboard(chatId) {
  * Bila XAI_API_KEY belum diisi, bot menjawab dengan petunjuk perintah biasa.
  * Tidak ada bagian lain yang bergantung pada fitur ini.
  */
-function penyediaObrolan() {
-  // Groq didahulukan karena gratis pada tingkat pemakaian wajar, dan
-  // jawabannya cepat. xAI dipakai bila Groq tidak diisi.
-  if (process.env.GROQ_API_KEY) {
-    return {
-      nama: "groq",
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      kunci: process.env.GROQ_API_KEY,
-      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
-    };
-  }
-  if (process.env.XAI_API_KEY) {
-    return {
-      nama: "xai",
-      url: "https://api.x.ai/v1/chat/completions",
-      kunci: process.env.XAI_API_KEY,
-      model: process.env.XAI_MODEL || "grok-4.6",
-    };
-  }
-  return null;
+/**
+ * Menjawab pesan biasa, dengan gaya yang membuat orang nyaman bercerita.
+ *
+ * TIGA HAL YANG DIJAGA DI SINI
+ * ----------------------------
+ * 1. Kondisi saluran diambil lebih dulu dari basis data, lalu disisipkan ke
+ *    arahan. Model tidak pernah diminta menebak angka; ia hanya boleh
+ *    menyampaikan ulang yang sudah diberikan.
+ *
+ * 2. Model boleh meminta sistem menjalankan perintah, dengan menuliskan
+ *    penanda [AKSI: ...] di baris terakhir. Penanda itu dicopot sebelum
+ *    pesan dikirim, lalu perintahnya dijalankan oleh kode, bukan oleh model.
+ *    Dengan begitu warga cukup bilang "coba liat kondisinya dong" tanpa
+ *    perlu hafal perintah bergaris miring.
+ *
+ * 3. Bila panggilan ke Groq gagal, sebabnya dikirim ke pengelola, bukan
+ *    ditelan diam-diam. Warga tetap menerima balasan yang wajar.
+ */
+
+const AKSI_DIKENAL = ["status", "prediksi", "riwayat", "lokasi", "mitigasi", "dashboard"];
+
+function pisahkanAksi(jawab) {
+  // Contoh yang dicari: [AKSI: status]  atau  [AKSI: lapor|ada sampah di RT 3]
+  const cocok = jawab.match(/\[AKSI:\s*([a-z]+)(?:\s*\|\s*([^\]]*))?\]/i);
+  if (!cocok) return { teks: jawab.trim(), aksi: null, argumen: "" };
+  return {
+    teks: jawab.replace(cocok[0], "").trim(),
+    aksi: cocok[1].toLowerCase(),
+    argumen: (cocok[2] || "").trim(),
+  };
 }
 
+async function jalankanAksi(db, chatId, nama, aksi, argumen) {
+  switch (aksi) {
+    case "status":    return cmdStatus(db, chatId);
+    case "prediksi":  return cmdPrediksi(db, chatId);
+    case "riwayat":   return cmdRiwayat(db, chatId);
+    case "lokasi":    return cmdLokasi(db, chatId);
+    case "mitigasi":  return cmdMitigasi(chatId);
+    case "dashboard": return cmdDashboard(chatId);
+    case "lapor":
+      if (argumen.length >= 10) return cmdLapor(db, chatId, nama, argumen);
+      return kirim(chatId, "Boleh ceritakan sedikit lebih rinci? Misalnya apa yang "
+                         + "menyumbat dan di RT berapa, biar petugas gampang mencarinya.");
+    default: return null;
+  }
+}
 
 async function cmdObrol(db, chatId, nama, teks) {
-  const penyedia = penyediaObrolan();
-  if (!penyedia) {
+  if (!kunciGroq()) {
     return kirim(chatId,
       "Saya belum bisa mengobrol bebas. Yang bisa saya bantu sekarang:\n\n" +
       "/status \u2014 kondisi saluran sekarang\n" +
@@ -435,7 +460,7 @@ async function cmdObrol(db, chatId, nama, teks) {
       "/mitigasi \u2014 langkah pencegahan");
   }
 
-  // Ambil kondisi sungguhan, agar model punya angka dan tidak perlu menebak.
+  // Kondisi sungguhan, supaya model punya angka dan tidak perlu menebak.
   const { data } = await db.from("status_ai")
     .select("status, alasan, rasio_endapan, rasio_debit, estimasi_volume_m3, hujan_mm, timestamp")
     .order("timestamp", { ascending: false }).limit(1);
@@ -451,15 +476,10 @@ async function cmdObrol(db, chatId, nama, teks) {
       `Diperbarui: ${waktuLokal(d.timestamp)}`
     : "Belum ada data penilaian tersimpan. Sensor kemungkinan belum terpasang.";
 
-  // Ambil percakapan sebelumnya, supaya bot tidak memperlakukan setiap
-  // pesan sebagai perkenalan baru. Sepuluh giliran terakhir sudah cukup:
-  // lebih dari itu hanya menambah biaya tanpa membuat jawabannya lebih baik.
+  // Sepuluh giliran terakhir sudah cukup untuk menyambung obrolan.
   const { data: riwayat } = await db.from("riwayat_obrolan")
-    .select("peran, isi")
-    .eq("chat_id", String(chatId))
-    .order("waktu", { ascending: false })
-    .limit(10);
-
+    .select("peran, isi").eq("chat_id", String(chatId))
+    .order("waktu", { ascending: false }).limit(10);
   const percakapan = (riwayat || []).reverse().map((r) => ({
     role: r.peran, content: r.isi,
   }));
@@ -469,101 +489,122 @@ async function cmdObrol(db, chatId, nama, teks) {
     `Meteseh, Kecamatan Tembalang, Kota Semarang. Kamu lagi ngobrol sama warga ` +
     `bernama ${nama} lewat Telegram.\n\n` +
 
+    `CARA KAMU MENDENGARKAN\n` +
+    `Kamu punya kebiasaan seorang pendengar yang baik, bukan penasihat yang ` +
+    `buru-buru. Pegangannya:\n` +
+    `- Tangkap dulu perasaannya sebelum membahas isinya. Kalau orang cerita ` +
+    `capek, jangan langsung kasih solusi; akui dulu capeknya.\n` +
+    `- Pakai kalimatnya sendiri saat menanggapi, biar dia merasa benar-benar ` +
+    `didengar.\n` +
+    `- Tanya terbuka, satu saja per balasan. Jangan menghujani pertanyaan.\n` +
+    `- Jangan menghakimi, jangan membandingkan dengan orang lain, jangan ` +
+    `bilang "harusnya kamu...".\n` +
+    `- Jangan memaksa ceria. Kalau memang lagi berat, akui saja itu berat.\n` +
+    `- Baru tawarkan bantuan kalau dia terdengar sudah siap, atau memang minta.\n\n` +
+
     `GAYA NGOBROL\n` +
-    `Santai dan akrab, kayak tetangga yang enak diajak ngobrol. Pakai Bahasa ` +
-    `Indonesia sehari-hari, boleh sesekali nyelipin kata Jawa yang lazim di ` +
-    `Semarang. Jangan kaku, jangan sok formal, tapi juga jangan berlebihan ` +
-    `pakai singkatan sampai susah dibaca. Jawaban pendek saja, paling banyak ` +
-    `empat kalimat, kecuali memang diminta rinci. Sesekali boleh pakai emoji, ` +
-    `tapi jangan tiap kalimat.\n\n` +
+    `Santai dan akrab, kayak tetangga yang enak diajak ngobrol. Bahasa ` +
+    `Indonesia sehari-hari, boleh nyelipin kata Jawa yang lazim di Semarang ` +
+    `seperti "mili", "kalen", "ndak papa". Jangan kaku, tapi jangan juga ` +
+    `berlebihan pakai singkatan sampai susah dibaca. Balasan pendek saja, ` +
+    `paling banyak empat kalimat, kecuali memang diminta rinci. Emoji sesekali ` +
+    `boleh, jangan tiap kalimat.\n\n` +
 
     `KAMU BOLEH NGOBROL SOAL\n` +
-    `1. Sistem ini sendiri: cara kerjanya, arti tiap status, kenapa pakai sensor ` +
-    `radar, kenapa AI-nya cuma boleh menaikkan kewaspadaan, dan apa saja batasnya.\n` +
-    `2. Kondisi saluran sekarang, tapi HANYA dari data yang diberikan di bawah.\n` +
-    `3. Semarang: cuaca, daerah rawan genangan, transportasi, tempat umum, ` +
-    `kebiasaan warga. Kalau tidak yakin, bilang tidak yakin.\n` +
-    `4. Kesehatan lingkungan dan kebersihan: memilah sampah, minyak jelantah, ` +
-    `jentik nyamuk DBD setelah genangan surut, leptospirosis dari air genangan, ` +
-    `cuci tangan, menjaga air minum tetap bersih, pentingnya sepatu bot.\n` +
-    `5. Keselamatan: listrik saat banjir, apa yang disiapkan sebelum musim hujan, ` +
-    `nomor darurat.\n` +
-    `6. Curhat dan obrolan ringan. Kalau warga cerita capek, kesal, cemas, atau ` +
-    `sedih, dengarkan dulu. Jangan buru-buru memberi solusi atau menceramahi. ` +
-    `Akui perasaannya, tanya seperlunya, baru bantu kalau memang diminta.\n` +
-    `7. Mengingatkan sesuatu. Kalau warga minta diingatkan, katakan kamu belum ` +
-    `bisa mengirim pengingat otomatis, tapi tawarkan menuliskan daftarnya ` +
-    `sekarang supaya mereka bisa menyimpan pesannya.\n\n` +
+    `1. Sistem ini: cara kerjanya, arti tiap status, kenapa pakai sensor radar, ` +
+    `kenapa AI-nya cuma boleh menaikkan kewaspadaan, dan apa batasnya.\n` +
+    `2. Kondisi saluran sekarang, HANYA dari data di bawah.\n` +
+    `3. Semarang: cuaca, daerah rawan genangan, transportasi, tempat umum. ` +
+    `Kalau tidak yakin, bilang tidak yakin.\n` +
+    `4. Kesehatan lingkungan: memilah sampah, minyak jelantah, jentik nyamuk ` +
+    `DBD setelah genangan surut, leptospirosis dari air genangan, cuci tangan, ` +
+    `menjaga air minum tetap bersih, sepatu bot.\n` +
+    `5. Keselamatan: listrik saat banjir, persiapan sebelum musim hujan.\n` +
+    `6. Curhat dan obrolan ringan sehari-hari.\n` +
+    `7. Mengingatkan sesuatu: kamu belum bisa kirim pengingat otomatis, tapi ` +
+    `tawarkan menuliskan daftarnya sekarang biar pesannya bisa disimpan.\n\n` +
+
+    `MENJALANKAN PERINTAH DARI OBROLAN\n` +
+    `Kalau dari obrolan jelas warga ingin melihat sesuatu atau melapor, akhiri ` +
+    `balasanmu dengan penanda di baris terpisah. Penanda ini tidak akan terlihat ` +
+    `warga; sistem yang menjalankannya.\n` +
+    `[AKSI: status]     kalau dia menanyakan kondisi saluran sekarang\n` +
+    `[AKSI: prediksi]   kalau dia menanyakan beberapa jam ke depan\n` +
+    `[AKSI: riwayat]    kalau dia menanyakan beberapa hari terakhir\n` +
+    `[AKSI: lokasi]     kalau dia menanyakan letak alatnya\n` +
+    `[AKSI: mitigasi]   kalau dia menanyakan cara mencegah genangan\n` +
+    `[AKSI: dashboard]  kalau dia minta tautan situs\n` +
+    `[AKSI: lapor|isi laporannya] kalau dia melaporkan sampah, genangan, atau ` +
+    `sumbatan. Tulis ulang laporannya dengan jelas setelah tanda garis tegak.\n` +
+    `Pakai paling banyak satu penanda per balasan, dan hanya kalau memang ` +
+    `perlu. Kalau cuma mengobrol biasa, tidak usah pakai penanda sama sekali.\n\n` +
 
     `ATURAN YANG TIDAK BOLEH DILANGGAR\n` +
     `1. Jangan pernah mengarang angka kondisi saluran. Kalau ditanya hal yang ` +
     `tidak ada di data di bawah, bilang terus terang tidak tahu.\n` +
-    `2. Jangan bikin ramalan sendiri. Kalau ditanya beberapa jam ke depan, ` +
-    `arahkan ke /prediksi.\n` +
+    `2. Jangan bikin ramalan sendiri; pakai [AKSI: prediksi].\n` +
     `3. Jangan memutuskan apakah warga harus mengungsi. Untuk keadaan darurat, ` +
     `sebutkan 112 dan arahkan mengikuti aparat setempat.\n` +
-    `4. Jangan mendiagnosis penyakit dan jangan menyebut nama obat atau dosis. ` +
+    `4. Jangan mendiagnosis penyakit, jangan menyebut nama obat atau dosis. ` +
     `Kalau ada keluhan sakit, arahkan ke puskesmas atau bidan terdekat.\n` +
-    `5. Kalau warga bicara soal menyakiti diri sendiri atau terdengar sangat ` +
-    `tertekan, jangan dianggap bercanda. Dengarkan dengan serius, sampaikan ` +
-    `kamu peduli, dan sarankan bicara dengan orang yang dipercaya, puskesmas, ` +
-    `atau layanan 119 ekstensi 8.\n` +
-    `6. Jangan menjanjikan kapan petugas datang.\n` +
-    `7. Kalau warga melaporkan sampah atau genangan, ajak ketik /lapor diikuti ` +
-    `keterangannya, supaya tercatat dan sampai ke petugas.\n\n` +
+    `5. Kalau warga menyinggung soal menyakiti diri sendiri, atau terdengar ` +
+    `sangat tertekan, jangan dianggap bercanda dan jangan buru-buru dialihkan. ` +
+    `Tetap di situ, dengarkan, sampaikan kamu peduli dan dia tidak sendirian. ` +
+    `Sarankan bicara dengan orang yang dipercaya, puskesmas, atau layanan 119 ` +
+    `ekstensi 8. Jangan memakai penanda AKSI apa pun pada balasan semacam ini.\n` +
+    `6. Jangan menjanjikan kapan petugas datang.\n\n` +
 
     `KONDISI SALURAN SAAT INI (satu-satunya data yang boleh kamu pakai):\n${kondisi}\n\n` +
 
-    `Kamu ingat percakapan sebelumnya di bawah ini. Pakai untuk menyambung ` +
-    `obrolan dengan wajar, jangan mengulang perkenalan tiap kali.`;
+    `Percakapan sebelumnya ada di bawah. Sambung dengan wajar, jangan mengulang ` +
+    `perkenalan tiap kali.`;
 
-  try {
-    const r = await fetch(penyedia.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${penyedia.kunci}`,
-      },
-      body: JSON.stringify({
-        model: penyedia.model,
-        temperature: 0.6,
-        max_tokens: 400,
-        messages: [
-          { role: "system", content: ARAHAN },
-          ...percakapan,
-          { role: "user", content: teks.slice(0, 900) },
-        ],
-      }),
-    });
-    const hasil = await r.json();
+  const hasil = await obrol([
+    { role: "system", content: ARAHAN },
+    ...percakapan,
+    { role: "user", content: teks.slice(0, 900) },
+  ], { suhu: 0.7, maksToken: 500 });
 
-    if (!r.ok) {
-      const sebab = hasil?.error?.message || hasil?.error || `HTTP ${r.status}`;
-      console.error(penyedia.nama + ":", sebab);
-      return kirim(chatId,
-        "Maaf, saya sedang tidak bisa mengobrol. Tetapi perintah biasa tetap jalan:\n" +
-        "/status, /prediksi, /lapor, /mitigasi");
-    }
-
-    const jawab = hasil?.choices?.[0]?.message?.content?.trim();
-    if (!jawab) return kirim(chatId, "Maaf, saya belum menangkap maksudnya. Coba tanyakan lagi?");
-
-    // Lolos-kan tanda kurung siku agar Telegram tidak menolak seluruh pesan
-    // bila model kebetulan menuliskannya.
-    // Simpan giliran ini supaya percakapan berikutnya nyambung.
-    // Kegagalan menyimpan tidak boleh membatalkan jawaban yang sudah siap.
-    db.from("riwayat_obrolan").insert([
-      { chat_id: String(chatId), peran: "user", isi: teks.slice(0, 900) },
-      { chat_id: String(chatId), peran: "assistant", isi: jawab.slice(0, 1500) },
-    ]).then(() => {}, () => {});
-
-    const aman = jawab.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return kirim(chatId, aman);
-  } catch (e) {
-    console.error("obrol:", e);
+  if (!hasil.ok) {
+    // Beri tahu pengelola sebabnya, supaya tidak perlu menebak-nebak.
+    console.error("obrolan gagal:", hasil.sebab);
+    lapor_admin_obrolan(hasil.sebab);
     return kirim(chatId,
-      "Maaf, sambungan sedang terganggu. Coba /status untuk melihat kondisi saluran.");
+      "Maaf, saya lagi tidak bisa mengobrol. Pengelola sudah saya beri tahu.\n\n" +
+      "Sementara ini perintah biasa tetap jalan: /status, /prediksi, /lapor, /mitigasi");
   }
+
+  const { teks: balasan, aksi, argumen } = pisahkanAksi(hasil.jawab);
+
+  if (balasan) {
+    const aman = balasan.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    await kirim(chatId, aman);
+  }
+
+  if (aksi && (AKSI_DIKENAL.includes(aksi) || aksi === "lapor")) {
+    await jalankanAksi(db, chatId, nama, aksi, argumen);
+  }
+
+  // Simpan giliran ini supaya percakapan berikutnya nyambung. Kegagalan
+  // menyimpan tidak boleh membatalkan jawaban yang sudah terkirim.
+  db.from("riwayat_obrolan").insert([
+    { chat_id: String(chatId), peran: "user", isi: teks.slice(0, 900) },
+    { chat_id: String(chatId), peran: "assistant", isi: (balasan || hasil.jawab).slice(0, 1500) },
+  ]).then(() => {}, () => {});
+}
+
+/** Kabari pengelola sekali saja per jenis galat, supaya tidak membanjiri. */
+let galatTerakhir = { pesan: null, waktu: 0 };
+function lapor_admin_obrolan(sebab) {
+  const admin = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!admin) return;
+  const kini = Date.now();
+  if (galatTerakhir.pesan === sebab && kini - galatTerakhir.waktu < 3600_000) return;
+  galatTerakhir = { pesan: sebab, waktu: kini };
+  kirim(admin,
+    "\u26a0\uFE0F <b>Obrolan bot gagal</b>\n\n" +
+    sebab.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+    "\n\nPeriksa di: " + SITUS + "/api/obrolan");
 }
 
 /* -------------------------------------------------------------- webhook */

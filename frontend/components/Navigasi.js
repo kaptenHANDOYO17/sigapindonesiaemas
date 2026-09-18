@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import MenuPengelola from "./MenuPengelola";
-import { TombolSetelan, useSetelan } from "./Setelan";
+import { TombolSetelan } from "./Setelan";
 
 /**
  * Menu navigasi utama.
@@ -12,17 +12,16 @@ import { TombolSetelan, useSetelan } from "./Setelan";
  * mendorong isi halaman ke bawah.
  */
 const TAUTAN = [
-  ["/", "nav.dasbor"],
-  ["/peta", "nav.peta"],
-  ["/daftar", "nav.daftar"],
-  ["/lapor", "nav.lapor"],
-  ["/simulasi", "nav.simulasi"],
-  ["/tentang", "nav.tentang"],
+  ["/", "Dasbor"],
+  ["/peta", "Peta Sensor"],
+  ["/daftar", "Daftar Peringatan"],
+  ["/lapor", "Lapor"],
+  ["/simulasi", "Simulasi"],
+  ["/tentang", "Tentang Sistem"],
 ];
 
 export default function Navigasi() {
   const [buka, setBuka] = useState(false);
-  const { t } = useSetelan();
 
   // Tutup menu ketika layar melebar, supaya tidak tertinggal terbuka.
   useEffect(() => {
@@ -39,8 +38,8 @@ export default function Navigasi() {
       </button>
 
       <nav className={`kepala-kanan ${buka ? "kepala-buka" : ""}`}>
-        {TAUTAN.map(([alamat, kunci]) => (
-          <a key={alamat} href={alamat} onClick={() => setBuka(false)}>{t(kunci)}</a>
+        {TAUTAN.map(([alamat, label]) => (
+          <a key={alamat} href={alamat} onClick={() => setBuka(false)}>{label}</a>
         ))}
         <TombolSetelan />
         <MenuPengelola />
