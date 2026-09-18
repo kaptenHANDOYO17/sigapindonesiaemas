@@ -182,7 +182,7 @@ def nilai_status(
     # terbukti lemah: pada pengujian ia hanya menangkap sekitar 5 persen
     # kejadian berbahaya. Model klasifikasi dibatasi karena alasan yang
     # berbeda, yaitu ketepatannya yang tinggi masih diukur terhadap simulator,
-    # bukan terhadap saluran Mangunharjo.
+    # bukan terhadap saluran Meteseh.
     #
     # Setelah terkumpul data verifikasi lapangan yang cukup dan ketepatan model
     # terbukti di lapangan, pembatasan ini boleh dilonggarkan. Keputusan itu

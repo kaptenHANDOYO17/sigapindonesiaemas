@@ -641,3 +641,110 @@ select:focus-visible, textarea:focus-visible {
   header, footer, .tombol, .tombol-halus, .jalan-pintas, .tombol-menu { display: none !important; }
   .panel { break-inside: avoid; border-color: #ccc; box-shadow: none; }
 }
+
+/* ======================================================================
+   TEMA WARNA MENURUT BAHASA DAN MODE
+
+   Bahasa menentukan tema, karena permintaannya begitu: memilih bahasa
+   sekaligus mengganti suasana halaman. Warna pokoknya saja yang berubah;
+   tata letak, ukuran huruf, dan jarak tetap sama, supaya siapa pun yang
+   sudah terbiasa dengan satu bahasa tidak perlu belajar ulang ketika
+   berpindah.
+   ====================================================================== */
+
+/* ------------------------- Indonesia: merah putih --------------------- */
+html[data-bahasa="id"] {
+  --biru: #9E2A2B;          /* merah bendera, dipakai sebagai warna pokok */
+  --teal: #C1121F;
+  --tepi: #E8D5D5;
+  --kartu: #FBF5F5;
+  --latar: #FAF7F7;
+}
+html[data-bahasa="id"] .pil { letter-spacing: .04em; }
+
+/* ---------------------------- Jawa: cokelat batik --------------------- */
+html[data-bahasa="jw"] {
+  --biru: #6B4A2F;          /* sogan, cokelat batik */
+  --teal: #8A6F47;
+  --tepi: #E4D8C6;
+  --kartu: #FBF7F0;
+  --latar: #F7F2E8;
+}
+html[data-bahasa="jw"] body {
+  /* Motif halus menyerupai tenun, dibuat dari gradasi supaya tidak
+     memerlukan berkas gambar tambahan. */
+  background-image:
+    repeating-linear-gradient(45deg, rgba(138,111,71,.045) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, rgba(138,111,71,.035) 0 2px, transparent 2px 9px);
+}
+html[data-bahasa="jw"] .panel { border-radius: 14px; }
+
+/* --------------------------- English: biru bawaan --------------------- */
+html[data-bahasa="en"] {
+  --biru: #1F4E79;
+  --teal: #1C7293;
+  --tepi: #D9E2E8;
+  --kartu: #F4F7F9;
+  --latar: #EEF3F5;
+}
+
+/* ============================== MODE GELAP ============================ */
+html[data-mode="malam"] {
+  --tinta: #E8EEF2;
+  --redup: #9AACB8;
+  --latar: #0F171C;
+  --kartu: #18242B;
+  --tepi: #2A3A44;
+}
+html[data-mode="malam"] body { background: var(--latar); color: var(--tinta); }
+html[data-mode="malam"] .panel { background: #131E24; border-color: var(--tepi); }
+html[data-mode="malam"] .panel:hover { box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+html[data-mode="malam"] .tabel { background: transparent; }
+html[data-mode="malam"] .tabel td { border-color: var(--tepi); color: var(--tinta); }
+html[data-mode="malam"] .tabel thead th { background: #1C2A32; color: var(--tinta); }
+html[data-mode="malam"] input, html[data-mode="malam"] select,
+html[data-mode="malam"] textarea, html[data-mode="malam"] .kotak-cari {
+  background: #101A20; color: var(--tinta); border-color: var(--tepi);
+}
+html[data-mode="malam"] .menu-profil-isi,
+html[data-mode="malam"] .kepala-kanan { background: #16232A; }
+html[data-mode="malam"] .wadah-peta, html[data-mode="malam"] .wadah-3d,
+html[data-mode="malam"] .tunggu-3d { background: #0B1216; }
+html[data-mode="malam"] .kartu-angka, html[data-mode="malam"] .pintas,
+html[data-mode="malam"] .tangga, html[data-mode="malam"] .kotak-sunting,
+html[data-mode="malam"] .kartu-laporan { background: #16232A; border-color: var(--tepi); }
+html[data-mode="malam"] .spanduk-peragaan { background: #2A2213; border-color: #4A3C1C; }
+html[data-mode="malam"] .kabar-info { background: #10232C; }
+html[data-mode="malam"] header, html[data-mode="malam"] footer { background: var(--latar); }
+
+/* Warna pokok tiap bahasa disesuaikan agar tetap terbaca di latar gelap. */
+html[data-mode="malam"][data-bahasa="id"] { --biru: #E86A6B; --teal: #F08A8B; }
+html[data-mode="malam"][data-bahasa="jw"] { --biru: #C79A6B; --teal: #D9B489; }
+html[data-mode="malam"][data-bahasa="en"] { --biru: #5FA8D3; --teal: #7EC4E0; }
+html[data-mode="malam"] .tombol { color: #0F171C; }
+html[data-mode="malam"] .tombol-halus { color: var(--tinta); background: #1C2A32; }
+html[data-mode="malam"] .pil { color: #0F171C; }
+
+/* ============================ TOMBOL SETELAN ========================== */
+.setelan { display: inline-flex; align-items: center; gap: 8px; }
+.pilih-bahasa {
+  display: inline-flex; padding: 3px; gap: 2px;
+  background: var(--kartu); border: 1px solid var(--tepi); border-radius: 999px;
+}
+.pilih-bahasa button {
+  font: inherit; font-size: .68rem; font-weight: 700; letter-spacing: .04em;
+  padding: 4px 9px; border: none; border-radius: 999px; cursor: pointer;
+  background: none; color: var(--redup);
+}
+.pilih-bahasa button:hover { color: var(--tinta); }
+.pilih-bahasa button.nyala { background: var(--biru); color: #fff; }
+html[data-mode="malam"] .pilih-bahasa button.nyala { color: #0F171C; }
+
+.tombol-mode {
+  width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+  background: var(--kartu); border: 1px solid var(--tepi);
+  color: var(--tinta); font-size: .95rem; line-height: 1;
+}
+.tombol-mode:hover { border-color: var(--biru); }
+
+html { transition: background-color .2s ease, color .2s ease; }

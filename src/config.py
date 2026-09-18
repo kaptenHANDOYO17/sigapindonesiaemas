@@ -51,7 +51,7 @@ class Saluran:
     """
 
     id: str = _env("SALURAN_ID", "MGH-01")
-    nama: str = _env("SALURAN_NAMA", "Drainase Mangunharjo RT 06 / RW 02")
+    nama: str = _env("SALURAN_NAMA", "Drainase Meteseh RT 06 / RW 02")
     lat: float = _f("SALURAN_LAT", -6.9575)
     lon: float = _f("SALURAN_LON", 110.3160)
 

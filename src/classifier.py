@@ -9,7 +9,7 @@ dilihat.
 
 WEWENANGNYA TETAP DIBATASI. Model boleh MENAIKKAN status, tidak boleh
 menurunkannya. Pembatasan ini dipertahankan karena angka ketepatan di atas
-berasal dari simulator, bukan dari saluran Mangunharjo. Setelah terkumpul data
+berasal dari simulator, bukan dari saluran Meteseh. Setelah terkumpul data
 verifikasi lapangan yang cukup dan ketepatannya terbukti, pembatasan ini boleh
 dilonggarkan, tetapi keputusan itu harus diambil manusia, bukan oleh kode.
 """

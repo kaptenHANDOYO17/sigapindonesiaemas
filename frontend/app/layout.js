@@ -1,17 +1,18 @@
 import "./globals.css";
 import Navigasi from "../components/Navigasi";
+import Setelan from "../components/Setelan";
 
-const JUDUL = "SIGAP Drainase — Pemantauan Saluran Mangunharjo";
+const JUDUL = "SIGAP Drainase — Pemantauan Saluran Meteseh";
 const KETERANGAN =
   "Sistem pemantauan saluran drainase secara terus-menerus dengan sensor radar " +
   "dan kecerdasan buatan. Peringatan dini penyumbatan dan genangan untuk warga " +
-  "Kelurahan Mangunharjo, Kecamatan Tugu, Kota Semarang.";
+  "Kelurahan Meteseh, Kecamatan Tembalang, Kota Semarang.";
 
 export const metadata = {
   title: JUDUL,
   description: KETERANGAN,
   applicationName: "SIGAP Drainase",
-  keywords: ["drainase", "banjir", "Mangunharjo", "Semarang", "IoT", "peringatan dini"],
+  keywords: ["drainase", "banjir", "Meteseh", "Semarang", "IoT", "peringatan dini"],
   openGraph: {
     title: JUDUL,
     description: KETERANGAN,
@@ -33,6 +34,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="id">
       <body>
+        <Setelan>
         <header className="kepala">
           <div className="kepala-isi">
             <a className="merek" href="/" style={{ textDecoration: "none", color: "inherit" }}>
@@ -61,6 +63,7 @@ export default function RootLayout({ children }) {
             Penilaian diperbarui otomatis setiap 30 menit.
           </p>
         </footer>
+              </Setelan>
       </body>
     </html>
   );

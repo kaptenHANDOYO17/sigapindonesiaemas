@@ -2,7 +2,7 @@ export const metadata = {
   title: "Tentang Sistem — SIGAP Drainase",
   description:
     "Cara kerja, hasil pengujian, dan keterbatasan sistem pemantauan drainase SIGAP " +
-    "di Kelurahan Mangunharjo, Kecamatan Tugu, Kota Semarang.",
+    "di Kelurahan Meteseh, Kecamatan Tembalang, Kota Semarang.",
 };
 
 const UKURAN = [
@@ -37,16 +37,45 @@ export default function Tentang() {
         <h2>Tentang Sistem</h2>
         <p className="panel-ket" style={{ maxWidth: "78ch" }}>
           SIGAP Drainase memantau kapasitas saluran drainase permukiman di Kelurahan
-          Mangunharjo secara terus-menerus, lalu menerjemahkannya menjadi empat status yang
+          Meteseh secara terus-menerus, lalu menerjemahkannya menjadi empat status yang
           dapat dimengerti warga maupun petugas.
         </p>
 
         <div className="kabar kabar-info" style={{ maxWidth: "80ch" }}>
-          <b>Apa yang program ini tidak kerjakan.</b> Banjir besar di Mangunharjo dipicu luapan
-          Sungai Plumbon dan tanggul Kali Babon yang jebol. Sistem ini tidak mencegah keduanya.
+          <b>Apa yang program ini tidak kerjakan.</b> Sebagian banjir besar di Meteseh dipicu
+          luapan sungai dan tanggul yang jebol, seperti pada 11 Desember 2024 ketika tanggul
+          Kali Tunggu jebol sepanjang dua puluh meter. Sistem ini tidak mencegah keduanya.
           Yang dijawabnya adalah kapasitas saluran drainase permukiman, yang menentukan seberapa
           parah genangan akibat hujan biasa dan seberapa cepat air surut setelah luapan. Batas
           ini disampaikan sendiri agar tidak ada harapan yang keliru.
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Mengapa Meteseh</h2>
+        <p className="panel-ket" style={{ maxWidth: "78ch" }}>
+          Kelurahan Meteseh berkembang pesat menjadi kawasan perumahan padat. Lahan yang dahulu
+          menyerap air berubah menjadi bangunan dan jalan, sedangkan kapasitas salurannya tidak
+          ikut bertambah. Genangan berulang setiap musim hujan.
+        </p>
+        <div style={{ overflowX: "auto" }}>
+          <table className="tabel">
+            <thead><tr><th>Tanggal</th><th>Lokasi</th><th>Ketinggian</th><th>Catatan</th></tr></thead>
+            <tbody>
+              <tr><td>6 Jan 2023</td><td>Perumahan Dinar Indah</td><td>2,5 m</td>
+                  <td>Satu korban jiwa, sekitar 45 KK mengungsi. Luapan sungai disertai tanggul jebol.</td></tr>
+              <tr><td>11 Des 2024</td><td>RT 08 RW 09</td><td>1,5 m</td>
+                  <td>45 KK atau sekitar 150 jiwa terdampak. Tanggul Kali Tunggu jebol sepanjang 20 meter.</td></tr>
+              <tr><td>30 Apr 2026</td><td>Beberapa perumahan</td><td>genangan</td>
+                  <td>Luapan sungai setelah hujan berintensitas tinggi.</td></tr>
+              <tr><td>16 Feb 2026</td><td>Dinar Indah RW 26 dan sekitarnya</td><td>genangan</td>
+                  <td>31 KK terdampak. BPBD menyebut sistem drainase tidak mampu menampung debit air.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="kabar kabar-info" style={{ marginTop: 16, maxWidth: "80ch" }}>
+          Pada kejadian 16 Februari 2026, BPBD Kota Semarang menyebut sendiri bahwa sistem
+          drainase tidak mampu menampung debit air. Di titik itulah program ini bekerja.
         </div>
       </section>
 
@@ -111,7 +140,7 @@ export default function Tentang() {
         </div>
 
         <div className="kabar kabar-buruk" style={{ marginTop: 20, maxWidth: "80ch" }}>
-          <b>Seluruh angka di atas berasal dari data simulasi, bukan dari saluran Mangunharjo.</b>{" "}
+          <b>Seluruh angka di atas berasal dari data simulasi, bukan dari saluran Meteseh.</b>{" "}
           Tidak ada dataset publik berisi tinggi endapan dan label tersumbat untuk saluran
           permukiman di Indonesia; satu-satunya sumbernya adalah petugas yang mengisi formulir
           verifikasi. Ketepatan yang sebenarnya baru dapat diketahui setelah sistem melewati satu
@@ -141,10 +170,10 @@ export default function Tentang() {
         <div style={{ overflowX: "auto" }}>
           <table className="tabel">
             <tbody>
-              <tr><td>Lokasi</td><td>Kelurahan Mangunharjo, Kecamatan Tugu, Kota Semarang</td></tr>
-              <tr><td>Penerima manfaat</td><td>2.406 kepala keluarga / 7.177 jiwa di 5 RW dan 30 RT</td></tr>
+              <tr><td>Lokasi</td><td>Kelurahan Meteseh, Kecamatan Tembalang, Kota Semarang</td></tr>
+              <tr><td>Penerima manfaat</td><td>24.195 jiwa di 31 RW dan 195 RT Kelurahan Meteseh</td></tr>
               <tr><td>Durasi</td><td>12 bulan, satu titik pantau percontohan</td></tr>
-              <tr><td>Anggaran tahun pertama</td><td>Rp 13.269.000</td></tr>
+              <tr><td>Anggaran tahun pertama</td><td>Rp 18.018.000</td></tr>
               <tr><td>Biaya perangkat lunak</td><td>Rp 0 — basis data, situs, dan otomasi berjalan pada paket gratis</td></tr>
               <tr><td>Pelaksana</td><td>Tim SIGAP Drainase, Teknik Komputer, Fakultas Teknik, Universitas Diponegoro</td></tr>
               <tr><td>Program induk</td><td>PLN SustainAction 2026</td></tr>

@@ -8,3 +8,4 @@ daftar - Mulai terima peringatan
 berhenti - Berhenti terima peringatan
 bantuan - Daftar perintah
 dashboard - Website Sigap
+lupakan - Hapus ingatan obrolan

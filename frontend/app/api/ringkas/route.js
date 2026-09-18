@@ -51,7 +51,7 @@ async function periksaPengelola(req) {
 }
 
 const ARAHAN = `Anda membantu pengelola sistem pemantauan drainase di Kelurahan
-Mangunharjo, Semarang. Tugas Anda HANYA meringkas laporan warga yang diberikan.
+Meteseh, Semarang. Tugas Anda HANYA meringkas laporan warga yang diberikan.
 
 Aturan yang wajib dipatuhi:
 1. Ringkas HANYA dari laporan yang diberikan. Jangan menambahkan kejadian,

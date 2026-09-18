@@ -96,7 +96,7 @@ export default function Daftar() {
         <h2>Daftar Menerima Peringatan</h2>
         <p className="panel-ket">
           Isi nama dan nomor Anda untuk menerima peringatan ketika saluran drainase di
-          Mangunharjo mulai tersumbat. Gratis, dan dapat dihentikan kapan saja. Setelah ini
+          Meteseh mulai tersumbat. Gratis, dan dapat dihentikan kapan saja. Setelah ini
           Anda tinggal menekan satu tombol untuk menyambungkannya ke Telegram.
         </p>
 

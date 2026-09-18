@@ -119,7 +119,7 @@ async function cmdStart(db, chatId, nama, argumen) {
       return kirim(chatId,
         `Halo <b>${cocok.nama || nama}</b>, pendaftaran Anda sudah lengkap.\n\n` +
         "Nomor Anda kini tersambung dengan bot ini dan aktif menerima peringatan dini " +
-        "genangan di Kelurahan Mangunharjo.\n\n" +
+        "genangan di Kelurahan Meteseh.\n\n" +
         "Ketik /bantuan untuk melihat apa saja yang bisa saya lakukan, atau tanyakan " +
         "apa saja dengan bahasa biasa.");
     }
@@ -149,7 +149,7 @@ async function cmdStart(db, chatId, nama, argumen) {
 
   return kirim(chatId,
     `Halo <b>${nama}</b>, selamat datang di <b>SIGAP Drainase</b>.\n\n` +
-    "Nomor Anda sudah aktif menerima peringatan dini genangan di Kelurahan Mangunharjo.\n\n" +
+    "Nomor Anda sudah aktif menerima peringatan dini genangan di Kelurahan Meteseh.\n\n" +
     "Sensor memantau saluran sepanjang hari. Anda dihubungi otomatis begitu terdeteksi " +
     `${IKON.WASPADA} Waspada, ${IKON.SIAGA} Siaga, atau ${IKON.KRITIS} Kritis. ` +
     "Saat kondisi aman, bot ini diam supaya tidak mengganggu.\n\n" +
@@ -298,7 +298,8 @@ async function cmdBantuan(chatId) {
     "/lokasi \u2014 titik sensor dan ukuran saluran\n" +
     "/daftar \u2014 mulai terima peringatan\n" +
     "/berhenti \u2014 berhenti terima peringatan\n" +
-    "/dashboard \u2014 buka situs SIGAP\n\n" +
+    "/dashboard \u2014 buka situs SIGAP\n" +
+    "/lupakan \u2014 hapus ingatan obrolan kita\n\n" +
     "Anda juga bisa langsung mengetik pertanyaan dengan bahasa biasa, tanpa perintah. " +
     "Contohnya: <i>saluran depan rumah saya gimana ya?</i>\n\n" +
     "Peringatan dikirim otomatis hanya saat status Waspada ke atas.");
@@ -450,44 +451,71 @@ async function cmdObrol(db, chatId, nama, teks) {
       `Diperbarui: ${waktuLokal(d.timestamp)}`
     : "Belum ada data penilaian tersimpan. Sensor kemungkinan belum terpasang.";
 
+  // Ambil percakapan sebelumnya, supaya bot tidak memperlakukan setiap
+  // pesan sebagai perkenalan baru. Sepuluh giliran terakhir sudah cukup:
+  // lebih dari itu hanya menambah biaya tanpa membuat jawabannya lebih baik.
+  const { data: riwayat } = await db.from("riwayat_obrolan")
+    .select("peran, isi")
+    .eq("chat_id", String(chatId))
+    .order("waktu", { ascending: false })
+    .limit(10);
+
+  const percakapan = (riwayat || []).reverse().map((r) => ({
+    role: r.peran, content: r.isi,
+  }));
+
   const ARAHAN =
-    `Anda adalah asisten SIGAP Drainase, sistem pemantauan saluran drainase di ` +
-    `Kelurahan Mangunharjo, Kecamatan Tugu, Kota Semarang. Anda sedang mengobrol ` +
-    `dengan warga bernama ${nama} lewat Telegram.\n\n` +
-    `GAYA BICARA\n` +
-    `Santai dan ramah, seperti tetangga yang paham soal saluran air. Pakai Bahasa ` +
-    `Indonesia sehari-hari. Hindari istilah teknis; bila terpaksa memakainya, ` +
-    `jelaskan sebentar. Jawaban pendek saja, paling banyak empat kalimat, kecuali ` +
-    `memang diminta rinci.\n\n` +
-    `KONDISI SALURAN SAAT INI (satu-satunya data yang boleh Anda pakai):\n${kondisi}\n\n` +
+    `Kamu asisten SIGAP Drainase, sistem pemantauan saluran drainase di Kelurahan ` +
+    `Meteseh, Kecamatan Tembalang, Kota Semarang. Kamu lagi ngobrol sama warga ` +
+    `bernama ${nama} lewat Telegram.\n\n` +
+
+    `GAYA NGOBROL\n` +
+    `Santai dan akrab, kayak tetangga yang enak diajak ngobrol. Pakai Bahasa ` +
+    `Indonesia sehari-hari, boleh sesekali nyelipin kata Jawa yang lazim di ` +
+    `Semarang. Jangan kaku, jangan sok formal, tapi juga jangan berlebihan ` +
+    `pakai singkatan sampai susah dibaca. Jawaban pendek saja, paling banyak ` +
+    `empat kalimat, kecuali memang diminta rinci. Sesekali boleh pakai emoji, ` +
+    `tapi jangan tiap kalimat.\n\n` +
+
+    `KAMU BOLEH NGOBROL SOAL\n` +
+    `1. Sistem ini sendiri: cara kerjanya, arti tiap status, kenapa pakai sensor ` +
+    `radar, kenapa AI-nya cuma boleh menaikkan kewaspadaan, dan apa saja batasnya.\n` +
+    `2. Kondisi saluran sekarang, tapi HANYA dari data yang diberikan di bawah.\n` +
+    `3. Semarang: cuaca, daerah rawan genangan, transportasi, tempat umum, ` +
+    `kebiasaan warga. Kalau tidak yakin, bilang tidak yakin.\n` +
+    `4. Kesehatan lingkungan dan kebersihan: memilah sampah, minyak jelantah, ` +
+    `jentik nyamuk DBD setelah genangan surut, leptospirosis dari air genangan, ` +
+    `cuci tangan, menjaga air minum tetap bersih, pentingnya sepatu bot.\n` +
+    `5. Keselamatan: listrik saat banjir, apa yang disiapkan sebelum musim hujan, ` +
+    `nomor darurat.\n` +
+    `6. Curhat dan obrolan ringan. Kalau warga cerita capek, kesal, cemas, atau ` +
+    `sedih, dengarkan dulu. Jangan buru-buru memberi solusi atau menceramahi. ` +
+    `Akui perasaannya, tanya seperlunya, baru bantu kalau memang diminta.\n` +
+    `7. Mengingatkan sesuatu. Kalau warga minta diingatkan, katakan kamu belum ` +
+    `bisa mengirim pengingat otomatis, tapi tawarkan menuliskan daftarnya ` +
+    `sekarang supaya mereka bisa menyimpan pesannya.\n\n` +
+
     `ATURAN YANG TIDAK BOLEH DILANGGAR\n` +
-    `1. Jangan pernah mengarang angka. Bila ditanya hal yang tidak ada di data di ` +
-    `atas, katakan terus terang Anda tidak tahu.\n` +
-    `2. Jangan membuat ramalan sendiri. Bila ditanya soal beberapa jam ke depan, ` +
-    `sarankan mengetik /prediksi.\n` +
+    `1. Jangan pernah mengarang angka kondisi saluran. Kalau ditanya hal yang ` +
+    `tidak ada di data di bawah, bilang terus terang tidak tahu.\n` +
+    `2. Jangan bikin ramalan sendiri. Kalau ditanya beberapa jam ke depan, ` +
+    `arahkan ke /prediksi.\n` +
     `3. Jangan memutuskan apakah warga harus mengungsi. Untuk keadaan darurat, ` +
-    `sebutkan nomor 112 dan arahkan mengikuti aparat setempat.\n` +
-    `4. Bila warga melaporkan sampah atau genangan, ajak mengetik /lapor diikuti ` +
-    `keterangannya, agar laporannya tercatat dan sampai ke petugas.\n` +
-    `5. Jangan menjanjikan kapan petugas datang.\n` +
-    `6. Jangan mendiagnosis penyakit dan jangan menyebut nama obat. Bila warga ` +
-    `mengeluh sakit, sarankan memeriksakan diri ke puskesmas atau bidan terdekat.\n\n` +
-    `TOPIK YANG BOLEH ANDA BAHAS DENGAN LELUASA\n` +
-    `Selain kondisi saluran, Anda boleh mengobrol soal kesehatan lingkungan dan ` +
-    `kebersihan permukiman, misalnya:\n` +
-    `- memilah sampah rumah tangga, dan mengapa minyak jelantah tidak boleh ` +
-    `dibuang ke saluran\n` +
-    `- menguras bak mandi dan menutup wadah air untuk mencegah jentik nyamuk ` +
-    `demam berdarah, yang biasanya meningkat setelah genangan surut\n` +
-    `- mencuci tangan dengan sabun setelah membersihkan saluran atau menyentuh ` +
-    `air genangan\n` +
-    `- bahaya leptospirosis dari air genangan yang tercemar air kencing tikus, ` +
-    `dan pentingnya memakai sepatu bot serta menutup luka terbuka\n` +
-    `- menjaga sumur dan air minum tetap bersih setelah banjir\n` +
-    `- kerja bakti dan gotong royong membersihkan saluran\n\n` +
-    `Untuk topik-topik itu, berikan saran umum yang aman dan mudah dikerjakan. ` +
-    `Tetap jangan memberi dosis obat, jangan mendiagnosis, dan jangan menakut-nakuti. ` +
-    `Bila keluhannya terdengar serius, arahkan ke puskesmas.`;
+    `sebutkan 112 dan arahkan mengikuti aparat setempat.\n` +
+    `4. Jangan mendiagnosis penyakit dan jangan menyebut nama obat atau dosis. ` +
+    `Kalau ada keluhan sakit, arahkan ke puskesmas atau bidan terdekat.\n` +
+    `5. Kalau warga bicara soal menyakiti diri sendiri atau terdengar sangat ` +
+    `tertekan, jangan dianggap bercanda. Dengarkan dengan serius, sampaikan ` +
+    `kamu peduli, dan sarankan bicara dengan orang yang dipercaya, puskesmas, ` +
+    `atau layanan 119 ekstensi 8.\n` +
+    `6. Jangan menjanjikan kapan petugas datang.\n` +
+    `7. Kalau warga melaporkan sampah atau genangan, ajak ketik /lapor diikuti ` +
+    `keterangannya, supaya tercatat dan sampai ke petugas.\n\n` +
+
+    `KONDISI SALURAN SAAT INI (satu-satunya data yang boleh kamu pakai):\n${kondisi}\n\n` +
+
+    `Kamu ingat percakapan sebelumnya di bawah ini. Pakai untuk menyambung ` +
+    `obrolan dengan wajar, jangan mengulang perkenalan tiap kali.`;
 
   try {
     const r = await fetch(penyedia.url, {
@@ -502,6 +530,7 @@ async function cmdObrol(db, chatId, nama, teks) {
         max_tokens: 400,
         messages: [
           { role: "system", content: ARAHAN },
+          ...percakapan,
           { role: "user", content: teks.slice(0, 900) },
         ],
       }),
@@ -521,6 +550,13 @@ async function cmdObrol(db, chatId, nama, teks) {
 
     // Lolos-kan tanda kurung siku agar Telegram tidak menolak seluruh pesan
     // bila model kebetulan menuliskannya.
+    // Simpan giliran ini supaya percakapan berikutnya nyambung.
+    // Kegagalan menyimpan tidak boleh membatalkan jawaban yang sudah siap.
+    db.from("riwayat_obrolan").insert([
+      { chat_id: String(chatId), peran: "user", isi: teks.slice(0, 900) },
+      { chat_id: String(chatId), peran: "assistant", isi: jawab.slice(0, 1500) },
+    ]).then(() => {}, () => {});
+
     const aman = jawab.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     return kirim(chatId, aman);
   } catch (e) {
@@ -579,6 +615,12 @@ export async function POST(req) {
       case "berhenti":
       case "stop":     await cmdBerhenti(db, chatId); break;
       case "tanya":    await cmdObrol(db, chatId, nama, argumen || "Halo"); break;
+      case "lupakan":
+      case "reset":
+        await db.from("riwayat_obrolan").delete().eq("chat_id", String(chatId));
+        await kirim(chatId, "Oke, obrolan kita sebelumnya sudah saya lupakan. "
+                          + "Kita mulai dari awal lagi ya \u{1F642}");
+        break;
       case "bantuan":
       case "help":     await cmdBantuan(chatId); break;
       default:

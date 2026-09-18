@@ -315,7 +315,7 @@ def pasang_menu() -> None:
         {"command": "bantuan", "description": "Daftar perintah"},
     ])
     panggil("setMyDescription",
-            description="Peringatan dini genangan dan penyumbatan saluran untuk warga Mangunharjo.")
+            description="Peringatan dini genangan dan penyumbatan saluran untuk warga Meteseh.")
     log.info("Menu perintah terpasang.")
 
 
