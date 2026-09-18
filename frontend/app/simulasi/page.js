@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase, belumDikonfigurasi, ambilProfil, STATUS, LABEL_PERAN } from "../../lib/supabase";
 import { nilaiStatus, estimasiVolume, AMBANG } from "../../lib/aturan";
 import Penampang from "../../components/Penampang";
@@ -21,11 +21,35 @@ export default function Simulasi() {
   const [mengirim, setMengirim] = useState(false);
   const [kabar, setKabar] = useState(null);
   const [minta, setMinta] = useState(false);
+  const [tampilan, setTampilan] = useState("3d");   // "3d" atau "penampang"
+  const [siap3d, setSiap3d] = useState(false);
+  const bingkai = useRef(null);
 
   useEffect(() => {
     if (belumDikonfigurasi) { setMemeriksa(false); return; }
     ambilProfil().then((p) => { setProfil(p); setMemeriksa(false); });
   }, []);
+
+  // Dengarkan kabar dari bingkai 3D bahwa ia sudah siap menerima nilai.
+  useEffect(() => {
+    function dengar(e) {
+      if (e.data?.jenis === "sigap-3d-siap") setSiap3d(true);
+    }
+    addEventListener("message", dengar);
+    return () => removeEventListener("message", dengar);
+  }, []);
+
+  // Kirim nilai pengatur ke bingkai setiap kali berubah.
+  //
+  // Penilaian status TIDAK ikut dikirim. Bingkai hanya menggambar bentuknya;
+  // status tetap dihitung di halaman ini memakai satu mesin aturan, supaya
+  // tidak pernah ada dua jawaban berbeda untuk angka yang sama.
+  useEffect(() => {
+    if (!siap3d || !bingkai.current) return;
+    bingkai.current.contentWindow?.postMessage({
+      jenis: "sigap-3d", endapan, air, debit,
+    }, "*");
+  }, [siap3d, endapan, air, debit]);
 
   const hasil = useMemo(() => {
     const r = nilaiStatus({
@@ -173,7 +197,29 @@ export default function Simulasi() {
 
           <p style={{ fontSize: ".92rem", lineHeight: 1.65, marginTop: 0 }}>{hasil.alasan}</p>
 
-          <Penampang rasioEndapan={endapan / 100} rasioAir={air / 100} warna={warna} />
+          <div className="pilih-tampilan">
+            <button className={tampilan === "3d" ? "nyala" : ""}
+                    onClick={() => setTampilan("3d")}>Model 3D</button>
+            <button className={tampilan === "penampang" ? "nyala" : ""}
+                    onClick={() => setTampilan("penampang")}>Penampang</button>
+          </div>
+
+          {tampilan === "3d" ? (
+            <div className="wadah-3d">
+              <iframe ref={bingkai} src="/model3d.html?embed=1"
+                      title="Model tiga dimensi pemasangan sistem"
+                      loading="lazy" />
+              {!siap3d && <div className="tunggu-3d">Menyiapkan model tiga dimensi…</div>}
+            </div>
+          ) : (
+            <Penampang rasioEndapan={endapan / 100} rasioAir={air / 100} warna={warna} />
+          )}
+
+          <p className="ket-tampilan">
+            {tampilan === "3d"
+              ? "Model digambar sebagai potongan; aslinya saluran tertutup rapat dan tertimbun tanah. Geser untuk memutar, gulir untuk memperbesar."
+              : "Potongan melintang saluran. Semakin tebal lapisan cokelat, semakin tipis ruang tersisa untuk menampung air hujan."}
+          </p>
 
           <div className="ringkas-angka" style={{ marginTop: 16 }}>
             <div className="kartu-angka">

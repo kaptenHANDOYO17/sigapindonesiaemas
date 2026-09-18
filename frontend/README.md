@@ -18,7 +18,8 @@ paket gratis.
 | `/berhenti` | warga | Berhenti menerima peringatan |
 | `/masuk` | pengelola | Masuk dengan surel dan kata sandi |
 | `/admin` | pengelola | Ringkasan, laporan warga, pendaftaran, verifikasi |
-| `/simulasi` | pengelola | Menguji penilaian status dan jalur notifikasi |
+| `/simulasi` | pengelola | Menguji penilaian status, dengan model 3D yang dapat diputar |
+| `/model3d.html` | umum | Model 3D pemasangan versi penuh, dapat dibagikan langsung |
 | `/profil` | pengelola | Ubah nama, jabatan, foto profil, dan kata sandi |
 | `/verifikasi` | pengelola | Pengisian hasil pemeriksaan lapangan |
 

@@ -1,5 +1,5 @@
 import "./globals.css";
-import MenuPengelola from "../components/MenuPengelola";
+import Navigasi from "../components/Navigasi";
 
 const JUDUL = "SIGAP Drainase — Pemantauan Saluran Mangunharjo";
 const KETERANGAN =
@@ -43,15 +43,7 @@ export default function RootLayout({ children }) {
               </svg>
               <span>SIGAP Drainase</span>
             </a>
-            <nav className="kepala-kanan">
-              <a href="/">Dasbor</a>
-              <a href="/daftar">Daftar Peringatan</a>
-              <a href="/peta">Peta Sensor</a>
-              <a href="/lapor">Lapor</a>
-              <a href="/tentang">Tentang Sistem</a>
-              <a href="/simulasi">Simulasi</a>
-              <MenuPengelola />
-            </nav>
+            <Navigasi />
           </div>
         </header>
 
