@@ -7,6 +7,17 @@ import Penampang from "../../components/Penampang";
 
 const KEDALAMAN = 800;   // milimeter, sesuai geometri contoh
 
+// Pilihan tingkat yang dapat diuji. "ikuti" memakai hasil simulasi di atas,
+// empat lainnya memaksa satu tingkat tertentu supaya bunyi pesannya bisa
+// diperiksa satu per satu sebelum musim hujan.
+const PILIHAN_UJI = [
+  { nilai: "ikuti",   label: "Ikuti simulasi" },
+  { nilai: "AMAN",    label: "Aman" },
+  { nilai: "WASPADA", label: "Waspada" },
+  { nilai: "SIAGA",   label: "Siaga" },
+  { nilai: "KRITIS",  label: "Kritis" },
+];
+
 export default function Simulasi() {
   const [profil, setProfil] = useState(null);
   const [memeriksa, setMemeriksa] = useState(true);
@@ -18,6 +29,7 @@ export default function Simulasi() {
   const [lonjakan, setLonjakan] = useState(0);     // kelipatan laju wajar
 
   const [sasaran, setSasaran] = useState("petugas");
+  const [statusUji, setStatusUji] = useState("ikuti");
   const [mengirim, setMengirim] = useState(false);
   const [kabar, setKabar] = useState(null);
   const [minta, setMinta] = useState(false);
@@ -59,6 +71,10 @@ export default function Simulasi() {
     return { ...r, volume: estimasiVolume(endapan / 100) };
   }, [endapan, debit, air, lajuNaik, lonjakan]);
 
+  // Tingkat yang benar-benar dikirim: hasil simulasi, atau tingkat yang dipaksa.
+  const statusKirim = statusUji === "ikuti" ? hasil.status : statusUji;
+  const dipaksa = statusUji !== "ikuti" && statusUji !== hasil.status;
+
   async function kirim() {
     setKabar(null);
     setMengirim(true);
@@ -74,8 +90,11 @@ export default function Simulasi() {
           sasaran,
           hasil: {
             saluran_id: "MGH-01",
-            status: hasil.status,
-            alasan: hasil.alasan,
+            status: statusKirim,
+            alasan: dipaksa
+              ? `Uji coba jalur notifikasi untuk tingkat ${statusKirim}. Angka pada pesan ini ` +
+                "diambil dari pengatur di halaman simulasi, bukan dari sensor di lapangan."
+              : hasil.alasan,
             rasio_endapan: endapan / 100,
             rasio_debit: debit / 100,
             rasio_air: air / 100,
@@ -259,8 +278,9 @@ export default function Simulasi() {
         <h2>Kirim notifikasi uji coba</h2>
         <p className="panel-ket" style={{ maxWidth: "80ch" }}>
           Mengirim pesan sungguhan melalui bot Telegram kepada nomor yang sudah terdaftar dan
-          terkonfirmasi, memakai kondisi simulasi di atas. Berguna untuk memastikan jalur
-          notifikasi benar-benar bekerja sebelum musim hujan tiba.
+          terkonfirmasi. Pilih tingkat yang ingin diuji, lalu kirim. Berguna untuk memastikan
+          jalur notifikasi benar-benar bekerja, dan untuk memeriksa bunyi setiap tingkat
+          peringatan sebelum musim hujan tiba.
         </p>
 
         <div className="kabar kabar-info" style={{ maxWidth: "80ch" }}>
@@ -271,55 +291,97 @@ export default function Simulasi() {
           mereka tidak akan percaya lagi.
         </div>
 
-        {!berbahaya ? (
-          <p className="panel-ket">
-            Status saat ini AMAN, sehingga tidak ada yang dikirim. Sistem sungguhan pun berdiam
-            diri pada kondisi ini. Naikkan tinggi endapan atau turunkan debit untuk mencoba.
-          </p>
-        ) : (
-          <>
-            <div className="formulir" style={{ maxWidth: 460 }}>
-              <div className="baris">
-                <label htmlFor="sasaran">Kirim kepada</label>
-                <select id="sasaran" value={sasaran} onChange={(e) => setSasaran(e.target.value)}>
-                  <option value="petugas">Petugas BPBD saja (disarankan)</option>
-                  <option value="semua">Semua penerima terdaftar, termasuk warga</option>
-                </select>
-              </div>
+        <div className="formulir" style={{ maxWidth: 680 }}>
+          <div className="baris">
+            <label>Tingkat status yang diuji</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+              {PILIHAN_UJI.map((p) => {
+                const aktif = statusUji === p.nilai;
+                const w = p.nilai === "ikuti" ? "var(--redup)" : STATUS[p.nilai].warna;
+                return (
+                  <button
+                    key={p.nilai}
+                    type="button"
+                    onClick={() => { setStatusUji(p.nilai); setMinta(false); setKabar(null); }}
+                    style={{
+                      cursor: "pointer",
+                      borderRadius: 999,
+                      padding: "7px 16px",
+                      fontSize: ".82rem",
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                      border: `1.5px solid ${aktif ? w : "var(--tepi)"}`,
+                      background: aktif ? w : "transparent",
+                      color: aktif ? "#0b1016" : "var(--tinta)",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
+            <small>
+              {statusUji === "ikuti"
+                ? `Mengikuti hasil simulasi di atas, saat ini ${hasil.status}.`
+                : `Memaksa tingkat ${statusUji}. Angka di dalam pesan tetap diambil dari pengatur di atas.`}
+            </small>
+          </div>
 
-            {sasaran === "semua" && (
-              <div className="kabar kabar-buruk" style={{ maxWidth: "80ch" }}>
-                Pilihan ini mengirim pesan ke seluruh warga yang terdaftar. Meski diberi penanda
-                uji coba, sebagian orang tetap akan terkejut. Beri tahu pengurus RT lebih dulu,
-                dan jangan lakukan pada malam hari.
-              </div>
-            )}
+          <div className="baris">
+            <label htmlFor="sasaran">Kirim kepada</label>
+            <select id="sasaran" value={sasaran} onChange={(e) => setSasaran(e.target.value)}>
+              <option value="petugas">Petugas BPBD saja (disarankan)</option>
+              <option value="semua">Semua penerima terdaftar, termasuk warga</option>
+            </select>
+          </div>
+        </div>
 
-            {kabar && (
-              <div className={`kabar kabar-${kabar.jenis === "baik" ? "baik" : "buruk"}`}>
-                {kabar.teks}
-              </div>
-            )}
+        {statusKirim === "AMAN" && (
+          <div className="kabar kabar-info" style={{ maxWidth: "80ch" }}>
+            Pada kondisi AMAN sistem sungguhan <b>tidak mengirim apa pun</b>. Pesan uji AMAN
+            tetap dapat dikirim dari sini, tetapi isinya sengaja dibuat berbeda: ia menyatakan
+            bahwa tidak ada peringatan, dan hanya memastikan nomor penerima dapat dihubungi.
+          </div>
+        )}
 
-            {!minta ? (
-              <button className="tombol" onClick={() => setMinta(true)} disabled={mengirim}>
-                Kirim pesan uji coba
-              </button>
-            ) : (
-              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <span style={{ fontSize: ".88rem" }}>
-                  Kirim pesan <b>{hasil.status}</b> ke{" "}
-                  <b>{sasaran === "semua" ? "semua penerima" : "petugas BPBD"}</b>?
-                </span>
-                <button className="tombol" onClick={kirim} disabled={mengirim}>
-                  {mengirim ? "Mengirim…" : "Ya, kirim"}
-                </button>
-                <button className="tombol tombol-halus" onClick={() => setMinta(false)}
-                        disabled={mengirim}>Batal</button>
-              </div>
-            )}
-          </>
+        {dipaksa && (
+          <div className="kabar kabar-info" style={{ maxWidth: "80ch" }}>
+            Tingkat yang dikirim (<b>{statusKirim}</b>) berbeda dengan hasil simulasi saat ini
+            (<b>{hasil.status}</b>). Pesan akan menyebutkan bahwa angkanya berasal dari halaman
+            simulasi, bukan dari sensor di lapangan.
+          </div>
+        )}
+
+        {sasaran === "semua" && (
+          <div className="kabar kabar-buruk" style={{ maxWidth: "80ch" }}>
+            Pilihan ini mengirim pesan ke seluruh warga yang terdaftar. Meski diberi penanda
+            uji coba, sebagian orang tetap akan terkejut. Beri tahu pengurus RT lebih dulu,
+            dan jangan lakukan pada malam hari.
+          </div>
+        )}
+
+        {kabar && (
+          <div className={`kabar kabar-${kabar.jenis === "baik" ? "baik" : "buruk"}`}>
+            {kabar.teks}
+          </div>
+        )}
+
+        {!minta ? (
+          <button className="tombol" onClick={() => setMinta(true)} disabled={mengirim}>
+            Kirim pesan uji coba {statusKirim}
+          </button>
+        ) : (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: ".88rem" }}>
+              Kirim pesan <b>{statusKirim}</b> ke{" "}
+              <b>{sasaran === "semua" ? "semua penerima" : "petugas BPBD"}</b>?
+            </span>
+            <button className="tombol" onClick={kirim} disabled={mengirim}>
+              {mengirim ? "Mengirim\u2026" : "Ya, kirim"}
+            </button>
+            <button className="tombol tombol-halus" onClick={() => setMinta(false)}
+                    disabled={mengirim}>Batal</button>
+          </div>
         )}
       </section>
     </main>
