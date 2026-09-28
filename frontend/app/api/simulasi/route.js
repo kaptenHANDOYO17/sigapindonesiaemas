@@ -24,6 +24,11 @@ export const dynamic = "force-dynamic";
 const IKON = { AMAN: "\u{1F7E2}", WASPADA: "\u{1F7E1}", SIAGA: "\u{1F7E0}", KRITIS: "\u{1F534}" };
 
 const TINDAKAN = {
+  AMAN: [
+    "Tidak ada yang perlu dilakukan. Ini hanya pemeriksaan jalur pesan.",
+    "Bila pesan ini sampai, berarti nomor Anda sudah benar terdaftar.",
+    "Balas /berhenti kapan saja bila ingin berhenti menerima notifikasi.",
+  ],
   WASPADA: [
     "Jangan membuang sampah, sisa makanan, atau minyak jelantah ke saluran.",
     "Bersihkan daun dan plastik di mulut saluran depan rumah.",
@@ -75,6 +80,7 @@ async function periksaPengelola(req) {
 
 function susunPesanWarga(h) {
   const judul = {
+    AMAN: "TIDAK ADA PERINGATAN \u2014 PEMERIKSAAN JALUR",
     WASPADA: "SALURAN MULAI MENYEMPIT",
     SIAGA: "SALURAN TERSUMBAT, WASPADA GENANGAN",
     KRITIS: "SALURAN TERSUMBAT PARAH, SIAP-SIAP",
@@ -90,11 +96,16 @@ function susunPesanWarga(h) {
     `dari kedalamannya, dan aliran air tinggal <b>${Math.round(h.rasio_debit * 100)} persen</b> ` +
     "dari yang seharusnya.",
     "",
-    "<b>Yang perlu dilakukan sekarang:</b>",
+    h.status === "AMAN"
+      ? "<b>Pada kondisi ini sistem sungguhan tidak mengirim pesan apa pun.</b> " +
+        "Pesan ini dikirim hanya untuk menguji bahwa nomor Anda dapat dihubungi."
+      : "<b>Yang perlu dilakukan sekarang:</b>",
   ];
   TINDAKAN[h.status].forEach((t, i) => baris.push(`${i + 1}. ${t}`));
-  baris.push("", "\u26A1 <b>Keselamatan kelistrikan:</b> matikan MCB sebelum air masuk rumah, " +
-                 "cabut peralatan dari stop kontak, dan naikkan barang elektronik.");
+  if (h.status !== "AMAN") {
+    baris.push("", "\u26A1 <b>Keselamatan kelistrikan:</b> matikan MCB sebelum air masuk rumah, " +
+                   "cabut peralatan dari stop kontak, dan naikkan barang elektronik.");
+  }
   baris.push("", "<i>Angka ini perkiraan sistem. Tetap ikuti arahan BPBD dan aparat setempat.</i>");
   return baris.join("\n");
 }
@@ -115,7 +126,9 @@ function susunPesanPetugas(h) {
       ? "pengerukan segera, siapkan karung dan angkutan"
       : h.status === "SIAGA"
         ? "jadwalkan pengerukan dalam waktu dekat"
-        : "pantau, belum perlu pengerukan"),
+        : h.status === "WASPADA"
+          ? "pantau, belum perlu pengerukan"
+          : "tidak ada, saluran dalam batas normal"),
     "",
     "<i>Perkiraan dari satu titik sensor. Kondisi sebenarnya dapat berbeda di sepanjang saluran.</i>",
   ].join("\n");
@@ -141,9 +154,13 @@ export async function POST(req) {
   }
 
   const { hasil, sasaran } = isi || {};
-  if (!hasil?.status || hasil.status === "AMAN") {
+
+  // Keempat tingkat boleh diuji dari halaman simulasi, termasuk AMAN.
+  // Pesan AMAN sengaja berbunyi lain: ia menyatakan tidak ada peringatan,
+  // supaya penerima tidak pernah mengira sistem berteriak tanpa sebab.
+  if (!TINDAKAN[hasil?.status]) {
     return NextResponse.json(
-      { ok: false, pesan: "Status AMAN tidak mengirim pesan apa pun, sama seperti sistem sungguhan." },
+      { ok: false, pesan: "Status tidak dikenal. Pilih AMAN, WASPADA, SIAGA, atau KRITIS." },
       { status: 400 });
   }
   if (!["petugas", "semua"].includes(sasaran)) {
