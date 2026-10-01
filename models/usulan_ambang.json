@@ -1,0 +1,13 @@
+{
+  "diperiksa_pada": "2026-10-01T22:30:36.192246+00:00",
+  "jumlah_verifikasi": 8,
+  "endapan_tinggi": 0.273,
+  "rerata_tingkat_sebenarnya": 1.38,
+  "jenis_sampah_tercatat": {
+    "organik": 2,
+    "campuran": 2,
+    "plastik": 1,
+    "lumpur": 1
+  },
+  "volume_nyata_rerata_m3": 10.57
+}

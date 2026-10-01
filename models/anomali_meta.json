@@ -1,7 +1,7 @@
 {
-  "dilatih_pada": "2026-09-16T05:06:25.210914+00:00",
+  "dilatih_pada": "2026-10-01T22:29:34.050616+00:00",
   "sumber": "sintetis",
-  "jumlah_baris": 35040,
+  "jumlah_baris": 17280,
   "fitur": [
     "permukaan_mm",
     "tinggi_air_mm",
@@ -23,7 +23,7 @@
     "jam_cos"
   ],
   "kontaminasi": 0.04,
-  "ambang_skor": -0.637751645564614,
-  "proporsi_janggal_uji": 0.0526541095890411,
+  "ambang_skor": -0.630405550680584,
+  "proporsi_janggal_uji": 0.03298611111111111,
   "saluran": "MGH-01"
 }
