@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1419">
+<title>SIGAP Drainase — AR Lapangan</title>
+<style>
+  :root {
+    --tinta: #eef4f6;
+    --redup: #9fb3bb;
+    --garis: rgba(255,255,255,.16);
+    --panel: rgba(10,20,25,.82);
+    --biru:  #35a0c4;
+    --aman:  #2fd08a;
+    --waspada:#ffc93d;
+    --siaga: #ff8a3d;
+    --kritis:#e8443a;
+    --atas: env(safe-area-inset-top, 0px);
+    --bawah: env(safe-area-inset-bottom, 0px);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: #0b1419; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--tinta); font-size: 15px; -webkit-user-select: none; user-select: none;
+    touch-action: none;
+  }
+  #umpan, #layar { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #umpan { object-fit: cover; background: #0b1419; }
+  #layar { display: block; }
+
+  /* ----------------------------------------------------------- gerbang */
+  #gerbang {
+    position: fixed; inset: 0; z-index: 40; overflow-y: auto;
+    background: linear-gradient(170deg, #0e2029 0%, #0b1419 60%);
+    padding: calc(var(--atas) + 26px) 22px calc(var(--bawah) + 26px);
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .kotak-gerbang { max-width: 460px; margin: 0 auto; width: 100%; }
+  .lencana {
+    display: inline-block; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--biru); border: 1px solid rgba(53,160,196,.45); border-radius: 999px;
+    padding: 4px 11px; margin-bottom: 16px;
+  }
+  h1 { font-size: 1.6rem; line-height: 1.2; margin: 0 0 10px; letter-spacing: -.01em; }
+  #gerbang p { color: var(--redup); line-height: 1.6; margin: 0 0 14px; font-size: .94rem; }
+  ol.syarat { color: var(--redup); font-size: .9rem; line-height: 1.6; padding-left: 20px; margin: 0 0 20px; }
+  ol.syarat b { color: var(--tinta); }
+  .tombol-besar {
+    display: block; width: 100%; border: 0; border-radius: 12px; padding: 15px;
+    font-size: 1rem; font-weight: 700; font-family: inherit; cursor: pointer;
+    background: var(--biru); color: #06181f; margin-bottom: 10px;
+  }
+  .tombol-besar.halus { background: transparent; color: var(--tinta); border: 1px solid var(--garis); font-weight: 600; }
+  .galat { color: #ffb3ac; font-size: .88rem; line-height: 1.55; margin-top: 12px; }
+
+  /* ------------------------------------------------------------- panel */
+  .sembunyi { display: none !important; }
+  #atas {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 20;
+    padding: calc(var(--atas) + 10px) 12px 10px;
+    display: flex; gap: 8px; align-items: center;
+    background: linear-gradient(180deg, rgba(5,12,16,.72), transparent);
+  }
+  #pil {
+    font-size: .76rem; font-weight: 800; letter-spacing: .06em;
+    padding: 6px 12px; border-radius: 999px; color: #06181f; background: var(--aman);
+  }
+  #ukur {
+    font-size: .72rem; color: var(--tinta); background: var(--panel);
+    border: 1px solid var(--garis); border-radius: 8px; padding: 5px 9px;
+    font-variant-numeric: tabular-nums; line-height: 1.45;
+  }
+  .ikon {
+    margin-left: auto; width: 38px; height: 38px; flex: 0 0 38px; border-radius: 10px;
+    background: var(--panel); border: 1px solid var(--garis); color: var(--tinta);
+    font-size: 1.05rem; cursor: pointer; font-family: inherit;
+  }
+
+  #petunjuk {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 15;
+    text-align: center; pointer-events: none; width: min(300px, 82vw);
+  }
+  #petunjuk .bidik {
+    width: 92px; height: 92px; margin: 0 auto 14px; border-radius: 50%;
+    border: 2px dashed rgba(255,255,255,.75);
+    animation: denyut 1.8s ease-in-out infinite;
+  }
+  #petunjuk p {
+    background: var(--panel); border: 1px solid var(--garis); border-radius: 10px;
+    padding: 9px 13px; font-size: .86rem; line-height: 1.5; margin: 0; color: var(--tinta);
+  }
+  @keyframes denyut { 0%,100% { transform: scale(1); opacity: .85 } 50% { transform: scale(1.12); opacity: .45 } }
+  @media (prefers-reduced-motion: reduce) { #petunjuk .bidik { animation: none } }
+
+  #bawah {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    padding: 12px 12px calc(var(--bawah) + 12px);
+    background: linear-gradient(0deg, rgba(5,12,16,.86), rgba(5,12,16,0));
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .baris { display: flex; gap: 7px; }
+  .status {
+    flex: 1; min-width: 0; border: 1px solid var(--garis); background: var(--panel);
+    color: var(--tinta); border-radius: 10px; padding: 10px 4px; cursor: pointer;
+    font-size: .76rem; font-weight: 700; font-family: inherit; letter-spacing: .02em;
+  }
+  .status.nyala { color: #06181f; border-color: transparent; }
+  .status[data-s="AMAN"].nyala    { background: var(--aman) }
+  .status[data-s="WASPADA"].nyala { background: var(--waspada) }
+  .status[data-s="SIAGA"].nyala   { background: var(--siaga) }
+  .status[data-s="KRITIS"].nyala  { background: var(--kritis) }
+
+  #alasan {
+    background: var(--panel); border: 1px solid var(--garis); border-radius: 10px;
+    padding: 9px 12px; font-size: .82rem; line-height: 1.5; color: var(--tinta);
+  }
+
+  #setelan { background: var(--panel); border: 1px solid var(--garis); border-radius: 12px; padding: 12px; }
+  .grup { margin-bottom: 11px; }
+  .grup:last-child { margin-bottom: 0; }
+  .grup > span { display: block; font-size: .72rem; color: var(--redup); margin-bottom: 6px; letter-spacing: .04em; }
+  .pilih { display: flex; gap: 6px; }
+  .pilih button {
+    flex: 1; border: 1px solid var(--garis); background: transparent; color: var(--redup);
+    border-radius: 8px; padding: 8px 4px; font-size: .78rem; font-family: inherit; cursor: pointer;
+  }
+  .pilih button.nyala { background: rgba(53,160,196,.22); border-color: var(--biru); color: var(--tinta); font-weight: 600; }
+  .geser { display: flex; align-items: center; gap: 10px; }
+  .geser input[type=range] { flex: 1; accent-color: var(--biru); height: 26px; }
+  .geser b { font-size: .78rem; min-width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
+  .catatan { font-size: .72rem; color: var(--redup); line-height: 1.5; margin: 10px 0 0; }
+
+  #pesan {
+    position: fixed; left: 50%; top: calc(var(--atas) + 62px); transform: translateX(-50%);
+    z-index: 30; background: var(--panel); border: 1px solid var(--garis); border-radius: 10px;
+    padding: 9px 15px; font-size: .84rem; max-width: 90vw; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<video id="umpan" playsinline muted autoplay></video>
+<canvas id="layar"></canvas>
+
+<!-- ======================================================== gerbang izin -->
+<div id="gerbang">
+  <div class="kotak-gerbang">
+    <span class="lencana">SIGAP Drainase</span>
+    <h1>Lihat alatnya langsung di gorong-gorong</h1>
+    <p>Arahkan kamera ponsel ke tutup saluran, lalu ketuk layar. Model alat akan menempel di
+       atas tutup itu, dan bagian dalam salurannya terlihat seperti dibelah.</p>
+    <ol class="syarat">
+      <li><b>Izinkan kamera</b> ketika ponsel bertanya.</li>
+      <li>Berdiri di dekat <b>tutup saluran</b>, gorong-gorong, atau lantai datar.</li>
+      <li>Pegang ponsel tegak, lalu <b>ketuk layar</b> untuk meletakkan alat.</li>
+    </ol>
+    <button class="tombol-besar" id="mulai">Nyalakan kamera</button>
+    <button class="tombol-besar halus" id="tanpaKamera">Coba tanpa kamera</button>
+    <p class="catatan" style="margin-top:14px">Gambar kamera hanya diproses di dalam ponsel Anda dan
+       tidak dikirim ke mana pun. Butuh koneksi aman (alamat diawali https).</p>
+    <div class="galat sembunyi" id="galat"></div>
+  </div>
+</div>
+
+<!-- ============================================================ antarmuka -->
+<div id="atas" class="sembunyi">
+  <span id="pil">AMAN</span>
+  <span id="ukur">endapan <b id="aEndapan">—</b> · sisa <b id="aSisa">—</b></span>
+  <button class="ikon" id="tombolSetelan" aria-label="Setelan">⚙</button>
+</div>
+
+<div id="petunjuk" class="sembunyi">
+  <div class="bidik"></div>
+  <p id="teksPetunjuk">Arahkan ke tutup saluran, lalu ketuk layar</p>
+</div>
+
+<div id="bawah" class="sembunyi">
+  <div id="setelan" class="sembunyi">
+    <div class="grup">
+      <span>Bahan tutup</span>
+      <div class="pilih" id="pBahan">
+        <button data-v="beton" class="nyala">Beton</button>
+        <button data-v="besi">Besi</button>
+      </div>
+    </div>
+    <div class="grup">
+      <span>Bentuk tutup</span>
+      <div class="pilih" id="pBentuk">
+        <button data-v="datar" class="nyala">Datar</button>
+        <button data-v="lengkung">Lengkung</button>
+      </div>
+    </div>
+    <div class="grup">
+      <span>Tampilan</span>
+      <div class="pilih" id="pTembus">
+        <button data-v="tembus" class="nyala">Tutup tembus pandang</button>
+        <button data-v="utuh">Tutup utuh</button>
+      </div>
+    </div>
+    <div class="grup">
+      <span>Ukuran model</span>
+      <div class="geser">
+        <input type="range" id="sSkala" min="20" max="150" step="5" value="55">
+        <b id="vSkala">55%</b>
+      </div>
+    </div>
+    <div class="grup">
+      <span>Putar model</span>
+      <div class="geser">
+        <input type="range" id="sPutar" min="0" max="360" step="5" value="0">
+        <b id="vPutar">0°</b>
+      </div>
+    </div>
+    <div class="baris">
+      <button class="status" id="ulang" style="flex:1">Letakkan ulang</button>
+    </div>
+    <p class="catatan" id="catatanMode"></p>
+  </div>
+
+  <div id="alasan">Endapan rendah dan aliran normal.</div>
+
+  <div class="baris">
+    <button class="status nyala" data-s="AMAN">AMAN</button>
+    <button class="status" data-s="WASPADA">WASPADA</button>
+    <button class="status" data-s="SIAGA">SIAGA</button>
+    <button class="status" data-s="KRITIS">KRITIS</button>
+  </div>
+</div>
+
+<div id="pesan" class="sembunyi"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+
+/* ===================================================================
+   SIGAP Drainase — AR Lapangan
+   Ukuran, warna, dan matriks penilaian disamakan dengan model3d.html
+   supaya bentuk yang dilihat di lapangan sama dengan yang di dasbor.
+   =================================================================== */
+
+const el = (i) => document.getElementById(i);
+
+/* ----------------------------------------------------- ukuran saluran */
+const LEBAR = 0.60;        // lebar dalam saluran, meter
+const DALAM = 0.80;        // kedalaman saluran dari bibir ke dasar
+const TEBAL = 0.15;        // tebal dinding beton
+const PANJANG = 1.60;      // panjang potongan yang ditampilkan
+const T_BETON = 0.10;      // tebal tutup beton
+const T_BESI = 0.035;      // tebal tutup besi
+const LENGKUNG = 0.16;     // tinggi lengkungan di puncak
+
+const AMBANG = {
+  endapanTinggi: 0.30, endapanSangatTinggi: 0.55,
+  debitMenurun: 0.60, debitSangatRendah: 0.30, airMeluap: 0.85,
+};
+const WARNA_STATUS = { AMAN:'#2fd08a', WASPADA:'#ffc93d', SIAGA:'#ff8a3d', KRITIS:'#e8443a' };
+
+/* Nilai pengatur untuk tiap status. Angka ini dipilih agar matriks aturan
+   di bawah benar-benar menghasilkan status yang dimaksud, bukan sekadar
+   diberi label. */
+const PRASETEL = {
+  AMAN:    { endapan: 0.18, air: 0.30, debit: 0.92 },
+  WASPADA: { endapan: 0.38, air: 0.46, debit: 0.85 },
+  SIAGA:   { endapan: 0.44, air: 0.58, debit: 0.42 },
+  KRITIS:  { endapan: 0.62, air: 0.97, debit: 0.14 },
+};
+
+/* ------------------------------------------------- matriks penilaian */
+function nilaiStatus(rEndapan, rDebit, rAir) {
+  let status, alasan;
+  const tinggi = rEndapan >= AMBANG.endapanTinggi;
+  const sangatTinggi = rEndapan >= AMBANG.endapanSangatTinggi;
+  const menurun = rDebit < AMBANG.debitMenurun;
+  const sangatRendah = rDebit < AMBANG.debitSangatRendah;
+
+  if (sangatTinggi && sangatRendah) {
+    status = 'KRITIS';
+    alasan = 'Endapan sangat tinggi dan debit air nyaris berhenti. Indikasi sumbatan parah.';
+  } else if (tinggi && menurun) {
+    status = 'SIAGA';
+    alasan = 'Endapan tinggi disertai penurunan debit. Indikasi saluran mulai tersumbat.';
+  } else if (tinggi) {
+    status = 'WASPADA';
+    alasan = 'Endapan tinggi namun aliran masih normal. Indikasi penyempitan saluran.';
+  } else {
+    status = 'AMAN';
+    alasan = 'Endapan rendah dan aliran normal.';
+  }
+  if (sangatRendah && rAir >= 0.45 && (status === 'AMAN' || status === 'WASPADA')) {
+    status = 'SIAGA';
+    alasan = 'Muka air cukup tinggi tetapi aliran nyaris berhenti. Ada yang menyumbat di hilir.';
+  }
+  if (sangatTinggi) {
+    status = 'KRITIS';
+    alasan = 'Endapan sudah melewati separuh kedalaman saluran. Ruang tersisa sangat tipis, ' +
+             'saluran akan langsung meluap begitu hujan turun.';
+  }
+  if (rAir >= AMBANG.airMeluap) {
+    status = 'KRITIS';
+    alasan = 'Muka air sudah mendekati bibir saluran. Risiko meluap ke jalan dan permukiman.';
+  }
+  return { status, alasan };
+}
+
+/* =================================================== penyiapan Three.js */
+const kanvas = el('layar');
+const renderer = new THREE.WebGLRenderer({ canvas: kanvas, alpha: true, antialias: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight, false);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.05, 60);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8e9aa2, 1.0));
+const matahari = new THREE.DirectionalLight(0xffffff, 0.65);
+matahari.position.set(2.2, 4, 2.4);
+scene.add(matahari);
+scene.add(new THREE.DirectionalLight(0xdfe9ef, 0.25).translateX(-3).translateZ(-3));
+
+const bahan = (w) => new THREE.MeshLambertMaterial({ color: w });
+const M = {
+  beton:  bahan(0xd5d8da),
+  beton2: bahan(0xbfc4c7),
+  gelap:  bahan(0x143d5e),
+  sensor: bahan(0x1f4e79),
+  logam:  bahan(0x7a858c),
+  kotak:  bahan(0xf0f3f5),
+  probe:  bahan(0x2e7d5b),
+  endapan: bahan(0x8a6f47),
+  air: new THREE.MeshLambertMaterial({ color: 0x7fb3d3, transparent: true, opacity: 0.74 }),
+  luber: new THREE.MeshBasicMaterial({ color: 0x9ddcf5, transparent: true, opacity: 0.30, depthWrite: false }),
+  berkas: new THREE.MeshBasicMaterial({
+    color: 0x9cc3db, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false }),
+  tutupBeton: new THREE.MeshLambertMaterial({ color: 0xc3c8cb, transparent: true, opacity: 0.45 }),
+  tutupBesi:  new THREE.MeshLambertMaterial({ color: 0x6f7a82, transparent: true, opacity: 0.5 }),
+};
+
+/* Akar model. Titik nolnya berada di permukaan atas tutup, sehingga ketika
+   diletakkan pada tutup saluran yang sebenarnya, kotak sensor duduk di atas
+   tutup itu dan isi salurannya tergambar menembus ke bawah tanah. */
+const akar = new THREE.Group();
+akar.visible = false;
+scene.add(akar);
+
+const isi = new THREE.Group();     // seluruh bagian yang tidak berubah
+akar.add(isi);
+
+function balok(lx, ly, lz, m, x, y, z, induk = isi) {
+  const g = new THREE.Mesh(new THREE.BoxGeometry(lx, ly, lz), m);
+  g.position.set(x, y, z);
+  induk.add(g);
+  return g;
+}
+function tabung(jari, tinggi, m, x, y, z, induk = isi, putar = null, sisi = 16) {
+  const g = new THREE.Mesh(new THREE.CylinderGeometry(jari, jari, tinggi, sisi), m);
+  g.position.set(x, y, z);
+  if (putar) g.rotation.set(putar[0], putar[1], putar[2]);
+  induk.add(g);
+  return g;
+}
+
+/* ------------------------------------------------ badan saluran (bawah) */
+// Bibir saluran berada tepat di bawah tutup. Tutup beton lebih tebal daripada besi,
+// jadi seluruh badan saluran digeser mengikuti tebal tutup yang sedang dipilih.
+const grupSaluran = new THREE.Group();
+isi.add(grupSaluran);
+
+const LUAR = LEBAR + 2 * TEBAL;
+
+// Dasar saluran
+balok(PANJANG, TEBAL, LUAR, M.beton2, 0, -DALAM - TEBAL / 2, 0, grupSaluran);
+// Dinding belakang penuh
+balok(PANJANG, DALAM, TEBAL, M.beton, 0, -DALAM / 2, -(LEBAR + TEBAL) / 2, grupSaluran);
+// Dinding depan hanya dua potongan pendek, sebagai penanda bahwa ini gambar belahan
+[-PANJANG / 2 + 0.12, PANJANG / 2 - 0.12].forEach(x =>
+  balok(0.24, DALAM, TEBAL, M.beton2, x, -DALAM / 2, (LEBAR + TEBAL) / 2, grupSaluran));
+// Dinding ujung kiri dan kanan
+[-PANJANG / 2 + TEBAL / 2, PANJANG / 2 - TEBAL / 2].forEach(x =>
+  balok(TEBAL, DALAM, LUAR, M.beton2, x, -DALAM / 2, 0, grupSaluran));
+
+/* ------------------------------------------------------ tutup saluran */
+const grupTutup = new THREE.Group();
+isi.add(grupTutup);
+
+function hapusAnak(g) {
+  while (g.children.length) {
+    const a = g.children.pop();
+    if (a.geometry) a.geometry.dispose();
+  }
+}
+
+let bahanTutup = 'beton', bentukTutup = 'datar', tembusTutup = true;
+
+function bahanAktif() {
+  const m = bahanTutup === 'beton' ? M.tutupBeton : M.tutupBesi;
+  m.opacity = tembusTutup ? (bahanTutup === 'beton' ? 0.52 : 0.58) : 1;
+  m.transparent = tembusTutup;
+  m.depthWrite = !tembusTutup;
+  m.needsUpdate = true;
+  return m;
+}
+
+function tebalTutup() { return bahanTutup === 'beton' ? T_BETON : T_BESI; }
+
+function bangunTutup() {
+  hapusAnak(grupTutup);
+  const m = bahanAktif();
+  const t = tebalTutup();
+  const LUBANG = 0.085;   // jari-jari lubang tempat moncong radar menembus tutup
+
+  if (bentukTutup === 'datar') {
+    // Pelat dibuat dari empat bagian agar ada lubang di tengah untuk radar.
+    const sisaDepan = (LUAR / 2) - LUBANG;
+    balok(PANJANG, t, sisaDepan, m, 0, -t / 2, (LUBANG + LUAR / 2) / 2, grupTutup);
+    balok(PANJANG, t, sisaDepan, m, 0, -t / 2, -(LUBANG + LUAR / 2) / 2, grupTutup);
+    const sisaSamping = (PANJANG / 2) - LUBANG;
+    balok(sisaSamping, t, 2 * LUBANG, m, (LUBANG + PANJANG / 2) / 2, -t / 2, 0, grupTutup);
+    balok(sisaSamping, t, 2 * LUBANG, m, -(LUBANG + PANJANG / 2) / 2, -t / 2, 0, grupTutup);
+
+    if (bahanTutup === 'besi') {
+      // Rusuk penguat melintang, ciri khas tutup besi.
+      for (let i = -2; i <= 2; i++) {
+        if (Math.abs(i * 0.30) < LUBANG + 0.05) continue;
+        balok(0.05, 0.022, LUAR, M.logam, i * 0.30, -t - 0.011, 0, grupTutup);
+      }
+    }
+  } else {
+    // Lengkung disusun dari bilah-bilah pendek yang mengikuti busur.
+    const R = (Math.pow(LUAR / 2, 2) + Math.pow(LENGKUNG, 2)) / (2 * LENGKUNG);
+    const sudutTepi = Math.asin((LUAR / 2) / R);
+    const N = 14;
+    const lebarBilah = (2 * sudutTepi * R) / N * 1.06;
+    for (let i = 0; i < N; i++) {
+      const a = -sudutTepi + (i + 0.5) * (2 * sudutTepi / N);
+      const z = R * Math.sin(a);
+      const y = R * Math.cos(a) - R + LENGKUNG - t / 2;
+      if (Math.abs(z) < LUBANG) continue;      // sisakan lubang radar di puncak
+      const bil = balok(PANJANG, t, lebarBilah, m, 0, y, z, grupTutup);
+      bil.rotation.x = -a;
+    }
+    if (bahanTutup === 'besi') {
+      for (let i = -2; i <= 2; i += 2) {
+        const a = -sudutTepi + ((i + 2.5) / 5) * 2 * sudutTepi;
+        const z = R * Math.sin(a);
+        const y = R * Math.cos(a) - R + LENGKUNG - t - 0.012;
+        if (Math.abs(z) < LUBANG + 0.03) continue;
+        const r = balok(PANJANG, 0.02, 0.05, M.logam, 0, y, z, grupTutup);
+        r.rotation.x = -a;
+      }
+    }
+  }
+
+  // Cincin gland di bibir lubang, supaya tampak rapat air
+  const cincin = new THREE.Mesh(
+    new THREE.TorusGeometry(LUBANG, 0.012, 6, 20), M.logam);
+  cincin.rotation.x = Math.PI / 2;
+  cincin.position.y = puncakTutup() - tebalTutup() / 2;
+  grupTutup.add(cincin);
+
+  aturTinggiBagianAtas();
+}
+
+/* Tinggi permukaan tempat kotak sensor menempel. Pada tutup datar sama dengan 0,
+   pada tutup lengkung mengikuti puncak busur. */
+function puncakTutup() { return bentukTutup === 'lengkung' ? LENGKUNG : 0; }
+
+/* -------------------------------------------- perangkat di atas tutup */
+const grupAlat = new THREE.Group();
+isi.add(grupAlat);
+
+// Pelat dudukan
+const dudukan = balok(0.42, 0.018, 0.30, M.logam, 0, 0, 0, grupAlat);
+// Kotak panel tahan air
+const kotak = balok(0.34, 0.20, 0.24, M.kotak, 0, 0, 0, grupAlat);
+const tutupKotak = balok(0.345, 0.022, 0.245, M.sensor, 0, 0, 0, grupAlat);
+// Antena
+const antena = tabung(0.006, 0.17, M.logam, 0.13, 0, 0.08, grupAlat);
+// Gelang sinyal
+const gelang = [];
+for (let i = 0; i < 3; i++) {
+  const c = new THREE.Mesh(new THREE.TorusGeometry(0.045 + i * 0.03, 0.004, 6, 20),
+    new THREE.MeshBasicMaterial({ color: 0x1c7293, transparent: true, opacity: 0.55 }));
+  c.rotation.x = Math.PI / 2;
+  grupAlat.add(c); gelang.push(c);
+}
+// Leher radar yang menembus tutup
+const leher = tabung(0.045, 0.16, M.sensor, 0, 0, 0, grupAlat);
+// Kepala radar di bawah tutup, menghadap ke bawah
+const kepala = tabung(0.075, 0.05, M.gelap, 0, 0, 0, grupAlat);
+
+function aturTinggiBagianAtas() {
+  const p = puncakTutup();
+  dudukan.position.y = p + 0.009;
+  kotak.position.y = p + 0.018 + 0.10;
+  tutupKotak.position.y = p + 0.018 + 0.20 + 0.011;
+  antena.position.y = p + 0.018 + 0.20 + 0.022 + 0.085;
+  gelang.forEach((c, i) => c.position.set(0.13, antena.position.y + 0.09 + i * 0.035, 0.08));
+  const t = tebalTutup();
+  leher.position.y = p - t / 2;
+  kepala.position.y = p - t - 0.03;
+}
+
+/* --------------------------------------- bagian yang berubah per status */
+const endapan = balok(PANJANG - 2 * TEBAL, 0.30, LEBAR, M.endapan, 0, 0, 0);
+const air = balok(PANJANG - 2 * TEBAL, 0.12, LEBAR, M.air, 0, 0, 0);
+const luber = balok(PANJANG - 0.06, 0.02, LUAR - 0.04, M.luber, 0, 0, 0);
+luber.visible = false;
+
+const berkas = new THREE.Mesh(new THREE.ConeGeometry(0.11, 1, 14, 1, true), M.berkas);
+berkas.rotation.x = Math.PI;
+isi.add(berkas);
+
+/* ------------------------------------------------------ tanda arah air */
+const panah = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.14, 10),
+  new THREE.MeshBasicMaterial({ color: 0xbfe0f0, transparent: true, opacity: 0.6 }));
+panah.rotation.z = -Math.PI / 2;
+isi.add(panah);
+
+/* ============================================ keadaan dan pembaruannya */
+let statusAktif = 'AMAN';
+let airDasarY = 0;
+const kini = { endapan: 0.18, air: 0.30, debit: 0.92 };   // nilai yang dianimasikan
+const tuju = { ...kini };
+
+function pilihStatus(s) {
+  statusAktif = s;
+  Object.assign(tuju, PRASETEL[s]);
+  document.querySelectorAll('.status[data-s]').forEach(b =>
+    b.classList.toggle('nyala', b.dataset.s === s));
+  const h = nilaiStatus(tuju.endapan, tuju.debit, tuju.air);
+  el('pil').textContent = h.status;
+  el('pil').style.background = WARNA_STATUS[h.status];
+  el('alasan').textContent = h.alasan;
+}
+
+function terapkanTinggi() {
+  const tE = DALAM * kini.endapan;
+  const tA = Math.max(tE + 0.008, DALAM * kini.air);
+
+  // Dasar saluran berada di y = -DALAM, jadi semua diukur ke atas dari sana.
+  endapan.scale.y = Math.max(0.001, tE / 0.30);
+  endapan.position.y = -DALAM + tE / 2;
+
+  air.scale.y = Math.max(0.001, (tA - tE) / 0.12);
+  airDasarY = -DALAM + tE + (tA - tE) / 2;
+  air.position.y = airDasarY;
+
+  // Air yang melewati bibir saluran digambar meluber ke permukaan jalan.
+  if (kini.air >= AMBANG.airMeluap) {
+    luber.visible = true;
+    const lebih = Math.max(0, kini.air - AMBANG.airMeluap);
+    const tebalLuber = 0.008 + lebih * 0.14;
+    luber.scale.y = tebalLuber / 0.02;
+    luber.position.y = puncakTutup() + tebalLuber / 2 + 0.002;
+    M.luber.opacity = 0.22 + Math.min(0.26, lebih * 1.8);
+  } else {
+    luber.visible = false;
+  }
+
+  // Berkas radar memanjang dari kepala sensor sampai permukaan air.
+  const yKepala = kepala.position.y - 0.025;
+  const yAir = -DALAM + tA;
+  const panjangBerkas = Math.max(0.02, yKepala - yAir);
+  berkas.scale.set(1, panjangBerkas, 1);
+  berkas.position.set(0, yAir + panjangBerkas / 2, 0);
+
+  panah.position.set(PANJANG / 2 - 0.22, -DALAM + tE + (tA - tE) / 2, 0);
+  panah.visible = (tA - tE) > 0.03;
+
+  el('aEndapan').textContent = Math.round(tE * 1000) + ' mm';
+  el('aSisa').textContent = Math.round((DALAM - tE) * 1000) + ' mm';
+}
+
+/* ============================================ penempatan dan tampilan */
+let sudahDitaruh = false;
+let skala = 0.55, putar = 0;
+let tinggiPegang = 1.35;      // perkiraan jarak ponsel ke tanah, meter
+
+function pasangTransformasi() {
+  akar.scale.setScalar(skala);
+  akar.rotation.y = putar * Math.PI / 180;
+}
+
+function tampilkanPesan(t, lama = 2400) {
+  const p = el('pesan');
+  p.textContent = t;
+  p.classList.remove('sembunyi');
+  clearTimeout(tampilkanPesan._t);
+  tampilkanPesan._t = setTimeout(() => p.classList.add('sembunyi'), lama);
+}
+
+/* ============================================== arah pandang dari giroskop */
+const zee = new THREE.Vector3(0, 0, 1);
+const euler = new THREE.Euler();
+const q0 = new THREE.Quaternion();
+const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+let orientasi = { alpha: 0, beta: 0, gamma: 0, ada: false };
+let putarLayar = 0;
+
+function arahkanKamera() {
+  if (!orientasi.ada) return;
+  const a = THREE.MathUtils.degToRad(orientasi.alpha);
+  const b = THREE.MathUtils.degToRad(orientasi.beta);
+  const g = THREE.MathUtils.degToRad(orientasi.gamma);
+  const o = THREE.MathUtils.degToRad(putarLayar);
+  euler.set(b, a, -g, 'YXZ');
+  camera.quaternion.setFromEuler(euler);
+  camera.quaternion.multiply(q1);
+  camera.quaternion.multiply(q0.setFromAxisAngle(zee, -o));
+}
+
+function dengarOrientasi() {
+  addEventListener('deviceorientation', (e) => {
+    if (e.alpha === null && e.beta === null) return;
+    orientasi = { alpha: e.alpha || 0, beta: e.beta || 0, gamma: e.gamma || 0, ada: true };
+  }, true);
+  addEventListener('orientationchange', () => { putarLayar = screen.orientation?.angle ?? window.orientation ?? 0; });
+  putarLayar = screen.orientation?.angle ?? window.orientation ?? 0;
+}
+
+/* Bila tidak ada giroskop (biasanya di komputer), layar dapat diseret. */
+let seret = null, sudutY = 0, sudutX = -0.25;
+function pasangSeret() {
+  kanvas.addEventListener('pointerdown', e => { seret = { x: e.clientX, y: e.clientY, gerak: false }; });
+  kanvas.addEventListener('pointermove', e => {
+    if (!seret || orientasi.ada) return;
+    const dx = e.clientX - seret.x, dy = e.clientY - seret.y;
+    if (Math.abs(dx) + Math.abs(dy) > 6) seret.gerak = true;
+    sudutY -= dx * 0.005;
+    sudutX = Math.max(-1.3, Math.min(0.6, sudutX - dy * 0.004));
+    seret.x = e.clientX; seret.y = e.clientY;
+    camera.quaternion.setFromEuler(new THREE.Euler(sudutX, sudutY, 0, 'YXZ'));
+  });
+  kanvas.addEventListener('pointerup', e => {
+    const diam = seret && !seret.gerak;
+    seret = null;
+    if (diam && !orientasi.ada) taruhModel();   // di ponsel ditangani peristiwa sentuh
+  });
+  kanvas.addEventListener('pointercancel', () => { seret = null; });
+}
+
+/* Meletakkan model pada bidang tanah, searah dengan arah pandang saat ini. */
+function taruhModel() {
+  const arah = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  let titik;
+  if (arah.y < -0.05) {
+    const t = (camera.position.y - (camera.position.y - tinggiPegang)) / -arah.y;
+    titik = camera.position.clone().add(arah.multiplyScalar(Math.min(t, 6)));
+  } else {
+    // Ponsel tidak menunduk; taruh saja 1,8 meter di depan, setinggi tanah.
+    titik = camera.position.clone().add(arah.multiplyScalar(1.8));
+    titik.y = camera.position.y - tinggiPegang;
+  }
+  akar.position.copy(titik);
+  akar.visible = true;
+  sudahDitaruh = true;
+  el('petunjuk').classList.add('sembunyi');
+  tampilkanPesan('Model diletakkan. Geser pengatur di bawah untuk mengubah status.');
+}
+
+/* ================================================== kamera dan gerbang */
+let aliran = null;
+
+async function nyalakanKamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('Peramban ini tidak menyediakan akses kamera. Coba buka lewat Chrome atau Safari terbaru.');
+  }
+  aliran = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: false,
+  });
+  const v = el('umpan');
+  v.srcObject = aliran;
+  await v.play().catch(() => {});
+}
+
+async function mintaGiroskop() {
+  const D = window.DeviceOrientationEvent;
+  if (D && typeof D.requestPermission === 'function') {
+    try {
+      const hasil = await D.requestPermission();
+      if (hasil !== 'granted') return false;
+    } catch { return false; }
+  }
+  dengarOrientasi();
+  return true;
+}
+
+function masukAntarmuka(pakaiKamera) {
+  el('gerbang').classList.add('sembunyi');
+  el('atas').classList.remove('sembunyi');
+  el('bawah').classList.remove('sembunyi');
+  el('petunjuk').classList.remove('sembunyi');
+  if (!pakaiKamera) {
+    el('umpan').classList.add('sembunyi');
+    scene.background = new THREE.Color(0x11212a);
+    el('teksPetunjuk').textContent = 'Mode tanpa kamera. Seret layar untuk melihat sekeliling, lalu ketuk untuk meletakkan.';
+  }
+  el('catatanMode').textContent = modeKeterangan(pakaiKamera);
+  pilihStatus('AMAN');
+  terapkanTinggi();
+}
+
+function modeKeterangan(pakaiKamera) {
+  if (!pakaiKamera) return 'Mode tanpa kamera: model digambar di latar polos.';
+  if (orientasi.ada) {
+    return 'Model ditahan pada satu titik memakai sensor arah ponsel. Berputar di tempat akan terasa ' +
+           'menempel; berjalan menjauh akan menggeser posisinya, dan itu wajar karena ponsel biasa ' +
+           'tidak mengukur jarak.';
+  }
+  return 'Sensor arah ponsel tidak tersedia, jadi arah pandang diatur dengan menyeret layar.';
+}
+
+el('mulai').addEventListener('click', async () => {
+  const g = el('galat'); g.classList.add('sembunyi');
+  el('mulai').disabled = true; el('mulai').textContent = 'Menyiapkan…';
+  try {
+    await mintaGiroskop();
+    await nyalakanKamera();
+    masukAntarmuka(true);
+  } catch (e) {
+    el('mulai').disabled = false; el('mulai').textContent = 'Nyalakan kamera';
+    g.classList.remove('sembunyi');
+    g.textContent = pesanGalat(e);
+  }
+});
+
+function pesanGalat(e) {
+  const n = e && e.name;
+  if (n === 'NotAllowedError') {
+    return 'Izin kamera ditolak. Buka pengaturan situs di peramban, izinkan Kamera, lalu muat ulang halaman ini. ' +
+           'Anda tetap bisa memakai tombol Coba tanpa kamera.';
+  }
+  if (n === 'NotFoundError' || n === 'OverconstrainedError') {
+    return 'Kamera belakang tidak ditemukan pada perangkat ini. Gunakan tombol Coba tanpa kamera.';
+  }
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    return 'Kamera hanya dapat dinyalakan pada alamat yang diawali https.';
+  }
+  return (e && e.message) ? e.message : 'Kamera tidak dapat dinyalakan.';
+}
+
+el('tanpaKamera').addEventListener('click', async () => {
+  await mintaGiroskop();
+  masukAntarmuka(false);
+});
+
+/* ===================================================== kendali di layar */
+document.querySelectorAll('.status[data-s]').forEach(b =>
+  b.addEventListener('click', () => pilihStatus(b.dataset.s)));
+
+el('tombolSetelan').addEventListener('click', () => {
+  el('setelan').classList.toggle('sembunyi');
+});
+
+function pasangPilihan(id, saat) {
+  const wadah = el(id);
+  wadah.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    wadah.querySelectorAll('button').forEach(x => x.classList.toggle('nyala', x === b));
+    saat(b.dataset.v);
+  });
+}
+pasangPilihan('pBahan', v => { bahanTutup = v; bangunTutup(); terapkanTinggi(); });
+pasangPilihan('pBentuk', v => { bentukTutup = v; bangunTutup(); terapkanTinggi(); });
+pasangPilihan('pTembus', v => { tembusTutup = (v === 'tembus'); bangunTutup(); });
+
+el('sSkala').addEventListener('input', (e) => {
+  skala = +e.target.value / 100;
+  el('vSkala').textContent = e.target.value + '%';
+  pasangTransformasi();
+});
+el('sPutar').addEventListener('input', (e) => {
+  putar = +e.target.value;
+  el('vPutar').textContent = e.target.value + '°';
+  pasangTransformasi();
+});
+el('ulang').addEventListener('click', () => {
+  sudahDitaruh = false;
+  akar.visible = false;
+  el('petunjuk').classList.remove('sembunyi');
+  el('setelan').classList.add('sembunyi');
+});
+
+/* Ketukan pada layar meletakkan model, tetapi hanya bila tidak sedang menggeser. */
+let ketuk = null;
+kanvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) { ketuk = null; return; }
+  ketuk = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+}, { passive: true });
+kanvas.addEventListener('touchend', (e) => {
+  if (!ketuk) return;
+  const t = e.changedTouches[0];
+  const jauh = Math.hypot(t.clientX - ketuk.x, t.clientY - ketuk.y);
+  if (jauh < 18 && Date.now() - ketuk.t < 600) taruhModel();
+  ketuk = null;
+}, { passive: true });
+
+/* Cubit dua jari untuk mengubah ukuran. */
+let cubit = null;
+kanvas.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2) {
+    const d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY);
+    if (cubit === null) { cubit = { d, s: skala }; return; }
+    skala = Math.max(0.2, Math.min(1.5, cubit.s * d / cubit.d));
+    el('sSkala').value = Math.round(skala * 100);
+    el('vSkala').textContent = Math.round(skala * 100) + '%';
+    pasangTransformasi();
+  }
+}, { passive: true });
+kanvas.addEventListener('touchend', () => { cubit = null; }, { passive: true });
+
+/* ======================================================= gelung gambar */
+let jalan = true;
+document.addEventListener('visibilitychange', () => { jalan = !document.hidden; });
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+});
+
+let waktuLalu = performance.now();
+function gambar(t) {
+  requestAnimationFrame(gambar);
+  if (!jalan) { waktuLalu = t; return; }
+  const dt = Math.min((t - waktuLalu) / 1000, 0.1);
+  waktuLalu = t;
+
+  // Nilai bergerak halus menuju nilai tujuan, sehingga air terlihat naik.
+  let berubah = false;
+  for (const k of ['endapan', 'air', 'debit']) {
+    const beda = tuju[k] - kini[k];
+    if (Math.abs(beda) > 0.0005) {
+      kini[k] += beda * Math.min(1, dt * 2.6);
+      berubah = true;
+    } else if (kini[k] !== tuju[k]) {
+      kini[k] = tuju[k]; berubah = true;
+    }
+  }
+  if (berubah) terapkanTinggi();
+
+  // Riak halus pada permukaan air dan denyut gelang sinyal
+  const detik = t / 1000;
+  air.position.y = airDasarY + Math.sin(detik * 2.1) * 0.0012;
+  gelang.forEach((c, i) => {
+    const f = (detik * 0.7 + i * 0.33) % 1;
+    c.material.opacity = 0.55 * (1 - f);
+    c.scale.setScalar(0.8 + f * 0.9);
+  });
+  if (panah.visible) {
+    panah.position.x = (PANJANG / 2 - 0.30) + Math.sin(detik * 1.6) * 0.06;
+  }
+
+  arahkanKamera();
+  renderer.render(scene, camera);
+}
+
+/* ============================================================== mulai */
+bangunTutup();
+pasangTransformasi();
+pasangSeret();
+terapkanTinggi();
+requestAnimationFrame(gambar);
+</script>
+</body>
+</html>

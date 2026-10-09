@@ -8,7 +8,7 @@ import { TombolSetelan } from "./Setelan";
  * Menu navigasi utama.
  *
  * Di layar lebar, seluruh tautan tampil berjajar. Di ponsel, tautan disembunyikan
- * di balik satu tombol, karena tujuh tautan berjajar akan memenuhi layar dan
+ * di balik satu tombol, karena delapan tautan berjajar akan memenuhi layar dan
  * mendorong isi halaman ke bawah.
  */
 const TAUTAN = [
@@ -17,6 +17,7 @@ const TAUTAN = [
   ["/daftar", "Daftar Peringatan"],
   ["/lapor", "Lapor"],
   ["/simulasi", "Simulasi"],
+  ["/ar", "AR Lapangan"],
   ["/tentang", "Tentang Sistem"],
 ];
 
