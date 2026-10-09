@@ -208,6 +208,13 @@
       </div>
     </div>
     <div class="grup">
+      <span>Jarak model</span>
+      <div class="geser">
+        <input type="range" id="sJarak" min="10" max="50" step="2" value="22">
+        <b id="vJarak">2,2 m</b>
+      </div>
+    </div>
+    <div class="grup">
       <span>Putar model</span>
       <div class="geser">
         <input type="range" id="sPutar" min="0" max="360" step="5" value="0">
@@ -308,7 +315,16 @@ function nilaiStatus(rEndapan, rDebit, rAir) {
 
 /* =================================================== penyiapan Three.js */
 const kanvas = el('layar');
-const renderer = new THREE.WebGLRenderer({ canvas: kanvas, alpha: true, antialias: false });
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: kanvas, alpha: true, antialias: false });
+} catch (e) {
+  document.getElementById('galat').classList.remove('sembunyi');
+  document.getElementById('galat').textContent =
+    'Peramban ini tidak dapat menggambar tiga dimensi (WebGL tidak tersedia). ' +
+    'Coba buka lewat Chrome atau Safari versi terbaru.';
+  throw e;
+}
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight, false);
 
@@ -577,7 +593,7 @@ function terapkanTinggi() {
 
 /* ============================================ penempatan dan tampilan */
 let sudahDitaruh = false;
-let skala = 0.55, putar = 0;
+let skala = 0.55, putar = 0, jarakTaruh = 2.2;
 let tinggiPegang = 1.35;      // perkiraan jarak ponsel ke tanah, meter
 
 function pasangTransformasi() {
@@ -643,23 +659,27 @@ function pasangSeret() {
   kanvas.addEventListener('pointercancel', () => { seret = null; });
 }
 
-/* Meletakkan model pada bidang tanah, searah dengan arah pandang saat ini. */
-function taruhModel() {
-  const arah = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-  let titik;
-  if (arah.y < -0.05) {
-    const t = (camera.position.y - (camera.position.y - tinggiPegang)) / -arah.y;
-    titik = camera.position.clone().add(arah.multiplyScalar(Math.min(t, 6)));
-  } else {
-    // Ponsel tidak menunduk; taruh saja 1,8 meter di depan, setinggi tanah.
-    titik = camera.position.clone().add(arah.multiplyScalar(1.8));
-    titik.y = camera.position.y - tinggiPegang;
-  }
+/* Meletakkan model tepat di tengah arah pandang.
+ *
+ * Versi sebelumnya memproyeksikan model ke bidang tanah di bawah ponsel. Cara itu
+ * gagal begitu ponsel ditengadahkan atau ditundukkan terlalu dalam: modelnya jatuh
+ * jauh di bawah layar dan terlihat seolah tidak muncul sama sekali. Ponsel biasa
+ * tidak mengukur jarak ke lantai, jadi menebak bidang tanah tidak pernah benar.
+ * Sekarang model selalu diletakkan pada jarak tertentu searah pandangan, lalu
+ * digeser sedikit ke atas supaya badan salurannya yang menjulur ke bawah ikut
+ * masuk layar. Apa pun sudut ponselnya, model pasti terlihat. */
+function taruhModel(diam) {
+  const arah = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+  const atas = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).normalize();
+  const titik = camera.position.clone().addScaledVector(arah, jarakTaruh);
+  // Titik nol model berada di permukaan tutup; isi saluran menjulur ke bawah.
+  // Geser ke atas setengah tinggi model supaya seluruhnya berada di tengah layar.
+  titik.addScaledVector(atas, 0.26 * skala);
   akar.position.copy(titik);
   akar.visible = true;
   sudahDitaruh = true;
   el('petunjuk').classList.add('sembunyi');
-  tampilkanPesan('Model diletakkan. Geser pengatur di bawah untuk mengubah status.');
+  if (!diam) tampilkanPesan('Ketuk layar lagi untuk memindahkan model ke arah pandangan Anda.');
 }
 
 /* ================================================== kamera dan gerbang */
@@ -703,6 +723,14 @@ function masukAntarmuka(pakaiKamera) {
   el('catatanMode').textContent = modeKeterangan(pakaiKamera);
   pilihStatus('AMAN');
   terapkanTinggi();
+  // Langsung tampilkan modelnya. Menunggu ketukan membuat layar tampak kosong dan
+  // orang mengira fiturnya rusak.
+  taruhModel(true);
+  el('petunjuk').classList.remove('sembunyi');
+  el('teksPetunjuk').textContent = pakaiKamera
+    ? 'Arahkan ke tutup saluran, lalu ketuk layar untuk memindahkan model ke situ'
+    : 'Seret layar untuk melihat sekeliling, ketuk untuk memindahkan model';
+  setTimeout(() => el('petunjuk').classList.add('sembunyi'), 4200);
 }
 
 function modeKeterangan(pakaiKamera) {
@@ -775,15 +803,23 @@ el('sSkala').addEventListener('input', (e) => {
   el('vSkala').textContent = e.target.value + '%';
   pasangTransformasi();
 });
+el('sJarak').addEventListener('input', (e) => {
+  jarakTaruh = +e.target.value / 10;
+  el('vJarak').textContent = jarakTaruh.toFixed(1).replace('.', ',') + ' m';
+  if (sudahDitaruh) taruhModel(true);
+});
 el('sPutar').addEventListener('input', (e) => {
   putar = +e.target.value;
   el('vPutar').textContent = e.target.value + '°';
   pasangTransformasi();
 });
 el('ulang').addEventListener('click', () => {
-  sudahDitaruh = false;
-  akar.visible = false;
-  el('petunjuk').classList.remove('sembunyi');
+  skala = 0.55; putar = 0; jarakTaruh = 2.2;
+  el('sSkala').value = 55; el('vSkala').textContent = '55%';
+  el('sPutar').value = 0; el('vPutar').textContent = '0\u00B0';
+  el('sJarak').value = 22; el('vJarak').textContent = '2,2 m';
+  pasangTransformasi();
+  taruhModel();
   el('setelan').classList.add('sembunyi');
 });
 
@@ -813,6 +849,7 @@ kanvas.addEventListener('touchmove', (e) => {
     el('sSkala').value = Math.round(skala * 100);
     el('vSkala').textContent = Math.round(skala * 100) + '%';
     pasangTransformasi();
+    if (sudahDitaruh) taruhModel(true);
   }
 }, { passive: true });
 kanvas.addEventListener('touchend', () => { cubit = null; }, { passive: true });
